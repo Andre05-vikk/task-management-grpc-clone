@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  grpc-server:
+    build: .
+    ports:
+      - "50051:50051"
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=your-secret-key

@@ -1,0 +1,172 @@
+syntax = "proto3";
+
+package taskmanagement;
+
+// Common response status for error handling
+message Status {
+  int32 code = 1;
+  string message = 2;
+}
+
+// Authentication Service
+service AuthService {
+  // Login and get JWT token
+  rpc Login(LoginRequest) returns (LoginResponse);
+  
+  // Logout (delete session)
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string token = 1;
+  Status status = 2;
+}
+
+message LogoutRequest {
+  string token = 1;
+}
+
+message LogoutResponse {
+  Status status = 1;
+}
+
+// User Service
+service UserService {
+  // Create a new user
+  rpc CreateUser(CreateUserRequest) returns (UserResponse);
+  
+  // Get all users
+  rpc GetUsers(GetUsersRequest) returns (GetUsersResponse);
+  
+  // Get user by ID
+  rpc GetUser(GetUserRequest) returns (UserResponse);
+  
+  // Delete user
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+  
+  // Update user
+  rpc UpdateUser(UpdateUserRequest) returns (UserResponse);
+}
+
+message User {
+  string id = 1;
+  string username = 2;
+  string email = 3;
+  string name = 4;
+  // Password is not included in responses
+}
+
+message CreateUserRequest {
+  string username = 1;
+  string email = 2;
+  string password = 3;
+  string name = 4;
+}
+
+message GetUsersRequest {
+  // Optional pagination parameters
+  int32 page = 1;
+  int32 limit = 2;
+}
+
+message GetUsersResponse {
+  repeated User users = 1;
+  Status status = 2;
+}
+
+message GetUserRequest {
+  string userId = 1;
+}
+
+message DeleteUserRequest {
+  string userId = 1;
+}
+
+message DeleteUserResponse {
+  Status status = 1;
+}
+
+message UpdateUserRequest {
+  string userId = 1;
+  optional string username = 2;
+  optional string email = 3;
+  optional string name = 4;
+  optional string password = 5;
+}
+
+message UserResponse {
+  User user = 1;
+  Status status = 2;
+}
+
+// Task Service
+service TaskService {
+  // Get all tasks
+  rpc GetTasks(GetTasksRequest) returns (GetTasksResponse);
+  
+  // Create a new task
+  rpc CreateTask(CreateTaskRequest) returns (TaskResponse);
+  
+  // Delete a task
+  rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse);
+  
+  // Update a task
+  rpc UpdateTask(UpdateTaskRequest) returns (TaskResponse);
+}
+
+message Task {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  string status = 4;
+  string userId = 5;
+  string createdAt = 6;
+  string updatedAt = 7;
+}
+
+message GetTasksRequest {
+  // Optional filters
+  optional string userId = 1;
+  optional string status = 2;
+  // Pagination
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+message GetTasksResponse {
+  repeated Task tasks = 1;
+  Status status = 2;
+}
+
+message CreateTaskRequest {
+  string title = 1;
+  string description = 2;
+  string status = 3;
+  string userId = 4;
+}
+
+message DeleteTaskRequest {
+  string taskId = 1;
+}
+
+message DeleteTaskResponse {
+  Status status = 1;
+}
+
+message UpdateTaskRequest {
+  string taskId = 1;
+  optional string title = 2;
+  optional string description = 3;
+  optional string status = 4;
+  optional string userId = 5;
+}
+
+message TaskResponse {
+  Task task = 1;
+  Status status = 2;
+}
