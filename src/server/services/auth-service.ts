@@ -9,15 +9,16 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 export const authServiceHandlers = {
   login: (call, callback) => {
-    const { username, password } = call.request;
+    const username = call.request.getUsername();
+    const password = call.request.getPassword();
 
-    // Find user
+    // Find user by username (which is actually email in our case to match REST API)
     const user = users.find(u => u.username === username);
 
     if (!user) {
       return callback({
-        code: grpc.status.NOT_FOUND,
-        message: 'User not found'
+        code: grpc.status.UNAUTHENTICATED,
+        message: 'Invalid email or password'
       });
     }
 
@@ -52,7 +53,7 @@ export const authServiceHandlers = {
   },
 
   logout: (call, callback) => {
-    const { token } = call.request;
+    const token = call.request.getToken();
 
     if (!sessions.has(token)) {
       return callback({

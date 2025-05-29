@@ -53,7 +53,7 @@ async function runExamples() {
 
     // 2. Login
     console.log('\n2. Logging in...');
-    const loginResponse = await login(testUser.username, testUser.password);
+    const loginResponse = await login(testUser.email, testUser.password);
     authToken = loginResponse.getToken() || '';
     console.log(`Logged in with token: ${authToken.substring(0, 15)}...`);
 
@@ -78,7 +78,7 @@ async function runExamples() {
       const createTaskResponse = await createTask({
         title: 'Test Task',
         description: 'This is a test task',
-        status: 'TODO',
+        status: 'pending',
         userId
       });
       const task = createTaskResponse.getTask();
@@ -102,7 +102,7 @@ async function runExamples() {
     try {
       const updateTaskResponse = await updateTask({
         taskId,
-        status: 'IN_PROGRESS'
+        status: 'in_progress'
       });
       const updatedTask = updateTaskResponse.getTask();
       console.log(`Updated task status: ${updatedTask ? updatedTask.getStatus() : 'unknown'}`);

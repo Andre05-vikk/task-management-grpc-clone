@@ -7,30 +7,28 @@ import { verifyToken } from '../utils/auth';
 
 export const userServiceHandlers = {
   createUser: (call, callback) => {
-    const { username, email, password, name } = call.request;
+    const username = call.request.getUsername();
+    const email = call.request.getEmail();
+    const password = call.request.getPassword();
+    const name = call.request.getName();
 
-    // Check if username already exists
-    if (users.some(u => u.username === username)) {
-      return callback({
-        code: grpc.status.ALREADY_EXISTS,
-        message: 'Username already exists'
-      });
-    }
+    // To match REST API behavior, we use email as username
+    const userEmail = email || username;
 
-    // Check if email already exists
-    if (users.some(u => u.email === email)) {
+    // Check if email already exists (REST API checks email)
+    if (users.some(u => u.username === userEmail)) {
       return callback({
         code: grpc.status.ALREADY_EXISTS,
         message: 'Email already exists'
       });
     }
 
-    // Create new user
+    // Create new user (matching REST API structure)
     const newUser = {
       id: uuidv4(),
-      username,
-      email,
-      name,
+      username: userEmail, // Store email as username to match REST API
+      email: userEmail,
+      name: name || 'User',
       password // In a real app, this would be hashed
     };
 
@@ -59,7 +57,8 @@ export const userServiceHandlers = {
 
   getUsers: (call, callback) => {
     // In a real app, you would implement pagination here
-    const { page = 1, limit = 10 } = call.request;
+    const page = call.request.getPage() || 1;
+    const limit = call.request.getLimit() || 10;
 
     // Return users without passwords
     const usersWithoutPasswords = users.map(({ password, ...user }) => user);
@@ -86,7 +85,7 @@ export const userServiceHandlers = {
   },
 
   getUser: (call, callback) => {
-    const { userId } = call.request;
+    const userId = call.request.getUserid ? call.request.getUserid() : call.request.userId;
 
     const user = users.find(u => u.id === userId);
 
@@ -119,7 +118,7 @@ export const userServiceHandlers = {
   },
 
   deleteUser: (call, callback) => {
-    const { userId } = call.request;
+    const userId = call.request.getUserid();
 
     const userIndex = users.findIndex(u => u.id === userId);
 
@@ -145,7 +144,11 @@ export const userServiceHandlers = {
   },
 
   updateUser: (call, callback) => {
-    const { userId, username, email, name, password } = call.request;
+    const userId = call.request.getUserid();
+    const username = call.request.getUsername();
+    const email = call.request.getEmail();
+    const name = call.request.getName();
+    const password = call.request.getPassword();
 
     const userIndex = users.findIndex(u => u.id === userId);
 

@@ -7,7 +7,10 @@ import { verifyToken } from '../utils/auth';
 
 export const taskServiceHandlers = {
   getTasks: (call, callback) => {
-    const { userId, status, page = 1, limit = 10 } = call.request;
+    const userId = call.request.getUserid();
+    const status = call.request.getStatus();
+    const page = call.request.getPage() || 1;
+    const limit = call.request.getLimit() || 10;
 
     let filteredTasks = [...tasks];
 
@@ -47,7 +50,10 @@ export const taskServiceHandlers = {
   },
 
   createTask: (call, callback) => {
-    const { title, description, status, userId } = call.request;
+    const title = call.request.getTitle();
+    const description = call.request.getDescription();
+    const status = call.request.getStatus();
+    const userId = call.request.getUserid();
 
     // Validate user exists
     if (!users.some(u => u.id === userId)) {
@@ -93,7 +99,7 @@ export const taskServiceHandlers = {
   },
 
   deleteTask: (call, callback) => {
-    const { taskId } = call.request;
+    const taskId = call.request.getTaskid();
 
     const taskIndex = tasks.findIndex(t => t.id === taskId);
 
@@ -119,7 +125,11 @@ export const taskServiceHandlers = {
   },
 
   updateTask: (call, callback) => {
-    const { taskId, title, description, status, userId } = call.request;
+    const taskId = call.request.getTaskid();
+    const title = call.request.getTitle();
+    const description = call.request.getDescription();
+    const status = call.request.getStatus();
+    const userId = call.request.getUserid();
 
     const taskIndex = tasks.findIndex(t => t.id === taskId);
 
