@@ -42,17 +42,21 @@ wait_for_service() {
     echo -e "${BLUE}Waiting for $service_name to be ready on port $port...${NC}"
     
     while [ $attempt -le $max_attempts ]; do
+        # Add a small delay before checking
+        sleep 2
+        
         if check_port $port; then
             echo -e "${GREEN}✓ $service_name is ready${NC}"
             return 0
         fi
         
         echo "Attempt $attempt/$max_attempts - waiting..."
-        sleep 1
         ((attempt++))
     done
     
     echo -e "${RED}✗ $service_name failed to start within $max_attempts seconds${NC}"
+    echo -e "${YELLOW}Debug: Checking what's on port $port${NC}"
+    lsof -Pi :$port || echo "No process found on port $port"
     return 1
 }
 
