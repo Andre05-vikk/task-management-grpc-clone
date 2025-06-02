@@ -1,7 +1,7 @@
 import * as grpc from '@grpc/grpc-js';
 import { v4 as uuidv4 } from 'uuid';
-import * as messages from '../../proto/proto/task_management_pb';
-import * as services from '../../proto/proto/task_management_grpc_pb';
+import * as messages from '../../proto/task_management_pb';
+import * as services from '../../proto/task_management_grpc_pb';
 import { tasks, users } from '../data/store';
 import { verifyToken } from '../utils/auth';
 

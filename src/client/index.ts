@@ -1,7 +1,7 @@
 import * as grpc from '@grpc/grpc-js';
 import path from 'path';
-import * as messages from '../proto/proto/task_management_pb';
-import * as services from '../proto/proto/task_management_grpc_pb';
+import * as messages from '../proto/task_management_pb';
+import * as services from '../proto/task_management_grpc_pb';
 
 const HOST = process.env.HOST || 'localhost:50051';
 

@@ -5,8 +5,8 @@ import { userServiceHandlers } from './services/user-service';
 import { taskServiceHandlers } from './services/task-service';
 
 // Import generated proto services
-import * as services from '../proto/proto/task_management_grpc_pb';
-import * as protoDescriptor from '../proto/proto/task_management_pb';
+import * as services from '../proto/task_management_grpc_pb';
+import * as protoDescriptor from '../proto/task_management_pb';
 
 const PORT = process.env.PORT || 50051;
 

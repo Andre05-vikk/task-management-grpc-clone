@@ -6,8 +6,8 @@
  */
 
 const grpc = require('@grpc/grpc-js');
-const messages = require('../dist/src/proto/proto/task_management_pb');
-const services = require('../dist/src/proto/proto/task_management_grpc_pb');
+const messages = require('../dist/src/proto/task_management_pb');
+const services = require('../dist/src/proto/task_management_grpc_pb');
 const axios = require('axios');
 
 // Configuration
