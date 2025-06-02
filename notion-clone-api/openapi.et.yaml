@@ -1,0 +1,649 @@
+openapi: 3.1.0
+info:
+  title: Ülesannete Haldamise API
+  version: 1.0.0
+  description: API ülesannete haldamiseks koos täieliku dokumentatsiooniga
+  contact:
+    name: Arendusmeeskond
+    email: contact@yourdomain.com
+
+servers:
+  - url: /
+    description: API serveri URL
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT autentimise token
+
+  schemas:
+    Kasutajad:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+          format: email
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+
+    PostUsersRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: "email@domain.com"
+        password:
+          type: string
+          format: password
+          minLength: 6
+          example: "minuparool"
+      required:
+        - email
+        - password
+
+    PatchUsersUserIdRequest:
+      type: object
+      properties:
+        password:
+          type: string
+          format: password
+          minLength: 6
+          example: "uustugevõparool"
+      required:
+        - password
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: Vea HTTP staatuskood
+          example: 400
+        error:
+          type: string
+          description: Vea tüüp või kategooria
+          example: Vigane Päring
+        message:
+          type: string
+          description: Lühike kirjeldus, mis läks valesti
+          example: Vigased sisendandmed
+      required:
+        - code
+        - error
+        - message
+
+    GetPostTaskResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+            - ootel
+            - töös
+            - valmis
+          default: ootel
+        userId:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - status
+        - user_id
+        - createdAt
+        - updatedAt
+
+    PostTaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          example: "Uue ülesande pealkiri"
+        description:
+          type: string
+          nullable: true
+          example: "Ülesande üksikasjalik kirjeldus"
+        status:
+          type: string
+          enum:
+            - pending
+            - in_progress
+            - completed
+          default: pending
+          example: "pending"
+      required:
+        - title
+
+    PatchTaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          example: "Uuendatud ülesande pealkiri"
+        description:
+          type: string
+          nullable: true
+          example: "Uuendatud ülesande kirjeldus"
+        status:
+          type: string
+          enum:
+            - pending
+            - in_progress
+            - completed
+          example: "in_progress"
+
+    PostSessionRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          example: "email@domain.com"
+        password:
+          type: string
+          format: password
+          minLength: 6
+          example: "minuparool"
+      required:
+        - email
+        - password
+
+    PostSessionResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT token autentimiseks
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+  responses:
+    BadRequest:
+      description: Vigane päring
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            BadRequest:
+              value:
+                code: 400
+                error: "Vigane Päring"
+                message: "Vigased sisendandmed"
+
+    ForbiddenError:
+      description: Juurdepääs keelatud
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            ForbiddenError:
+              value:
+                code: 403
+                error: "Keelatud"
+                message: "Teil pole sellele ressursile juurdepääsuõigust"
+            InvalidTokenError:
+              value:
+                code: 403
+                error: "Keelatud"
+                message: "Vigane või aegunud token"
+
+    InternalServerError:
+      description: Serveri sisemine viga
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            InternalServerError:
+              value:
+                code: 500
+                error: "Serveri Sisemine Viga"
+                message: "Serveris tekkis ootamatu viga"
+
+    NotFoundError:
+      description: Ressurssi ei leitud
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            NotFoundError:
+              value:
+                code: 404
+                error: "Ei Leitud"
+                message: "Päritud ressurssi ei leitud"
+
+    GoneError:
+      description: Ressurss ei ole enam saadaval
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            GoneError:
+              value:
+                code: 410
+                error: "Kadunud"
+                message: "Päritud ressurss ei ole enam saadaval"
+
+    UnauthorizedError:
+      description: Autentimine on nõutav
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            UnauthorizedError:
+              value:
+                code: 401
+                error: "Autoriseerimata"
+                message: "Sellele ressursile juurdepääsuks on vaja autentimist"
+
+
+
+x-tagGroups:
+  - name: API Dokumentatsioon
+    tags:
+      - Autentimine
+      - Kasutajad
+      - Ülesanded
+
+tags:
+  - name: Autentimine
+    description: Autentimise lõpp-punktid
+  - name: Kasutajad
+    description: Kasutajate haldamise lõpp-punktid
+  - name: Ülesanded
+    description: Ülesannete haldamise lõpp-punktid
+
+paths:
+  /users:
+    post:
+      tags:
+        - Kasutajad
+      summary: Loo uus kasutaja
+      description: Registreeri uus kasutajakonto
+      operationId: looKasutaja
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostUsersRequest"
+      responses:
+        "201":
+          description: Kasutaja edukalt loodud
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Kasutajad"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: E-post on juba olemas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                ConflictError:
+                  value:
+                    code: 409
+                    error: "Konflikt"
+                    message: "E-post on juba olemas"
+    get:
+      tags:
+        - Kasutajad
+      summary: Kuva kõik kasutajad
+      description: Hangi nimekiri kõikidest kasutajatest
+      operationId: hankiKasutajad
+      security:
+        - bearerAuth: [ ]
+      responses:
+        "200":
+          description: Kasutajate nimekiri
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Kasutajad"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+
+  /users/{userId}:
+    parameters:
+      - name: kasutajaId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Kasutaja ID
+    get:
+      tags:
+        - Kasutajad
+      summary: Hangi kasutaja ID järgi
+      description: Hangi üksikasjalik teave konkreetse kasutaja kohta
+      operationId: hankiKasutajaIdJargi
+      security:
+        - bearerAuth: [ ]
+      responses:
+        "200":
+          description: Kasutaja andmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Kasutajad"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+    delete:
+      tags:
+        - Kasutajad
+      summary: Kustuta kasutajakonto
+      description: Kustuta kasutaja konto ja kõik seotud ülesanded
+      operationId: kustutaKasutaja
+      security:
+        - bearerAuth: [ ]
+      responses:
+        "204":
+          description: Kasutaja edukalt kustutatud
+          # 204 vastused ei tohiks sisaldada sisu
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - Kasutajad
+      summary: Uuenda kasutajat
+      description: Uuenda kasutaja teavet (praegu ainult parool)
+      operationId: uuendaKasutajat
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchUsersUserIdRequest"
+      responses:
+        "200":
+          description: Kasutaja edukalt uuendatud
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Kasutajad"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /sessions:
+    post:
+      tags:
+        - Autentimine
+      summary: Logi sisse JWT tokeni saamiseks
+      description: Autendi kasutaja ja saa JWT token
+      operationId: logiSisse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostSessionRequest"
+      responses:
+        "200":
+          description: Edukas sisselogimine
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostSessionResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+    delete:
+      tags:
+        - Autentimine
+      summary: Kustuta praegune sessioon
+      description: Kustuta praeguse kasutaja sessioon
+      operationId: kustutaSessioon
+      security:
+        - bearerAuth: [ ]
+      responses:
+        "204":
+          description: Sessioon edukalt kustutatud
+          # 204 vastused ei tohiks sisaldada sisu
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tasks:
+    get:
+      tags:
+        - Ülesanded
+      summary: Hangi kõik ülesanded
+      operationId: hankiKoikYlesanded
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: page
+          in: query
+          description: Lehekülje number lehekülgede jaotamiseks (algab 1-st)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Elementide arv lehekülje kohta
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+        - name: sort
+          in: query
+          description: Sorteerimisväli ja suund (nt title:asc, createdAt:desc)
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filtreeri ülesandeid oleku järgi
+          schema:
+            type: string
+            enum:
+              - pending
+              - in_progress
+              - completed
+      responses:
+        "200":
+          description: Ülesannete nimekiri
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page:
+                    type: integer
+                    description: Praegune lehekülje number
+                  limit:
+                    type: integer
+                    description: Elementide arv lehekülje kohta
+                  total:
+                    type: integer
+                    description: Ülesannete koguarv
+                  tasks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/GetPostTaskResponse"
+                required:
+                  - page
+                  - limit
+                  - total
+                  - tasks
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    post:
+      tags:
+        - Ülesanded
+      summary: Loo uus ülesanne
+      description: Loo uus ülesanne
+      operationId: looYlesanne
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostTaskRequest"
+      responses:
+        "201":
+          description: Ülesanne edukalt loodud
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetPostTaskResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tasks/{taskId}:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        description: Muudetava ülesande ID
+        schema:
+          type: integer
+          format: int64
+    delete:
+      tags:
+        - Ülesanded
+      summary: Kustuta ülesanne
+      description: Kustuta konkreetne ülesanne ID järgi
+      operationId: kustutaYlesanne
+      security:
+        - bearerAuth: [ ]
+      responses:
+        "204":
+          description: Ülesanne edukalt kustutatud
+          # 204 vastused ei tohiks sisaldada sisu
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - Ülesanded
+      summary: Uuenda ülesannet
+      description: Uuenda olemasoleva ülesande välju
+      operationId: uuendaYlesannet
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchTaskRequest"
+      responses:
+        "200":
+          description: Ülesanne edukalt uuendatud
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetPostTaskResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"

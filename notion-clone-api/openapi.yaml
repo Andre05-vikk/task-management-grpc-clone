@@ -1,0 +1,649 @@
+openapi: 3.1.0
+info:
+  title: Task Management API
+  version: 1.0.0
+  description: API for managing tasks with full documentation
+  contact:
+    name: Development Team
+    email: contact@yourdomain.com
+
+servers:
+  - url: /
+    description: API server URL
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication
+
+  schemas:
+    Users:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+          format: email
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+
+    PostUsersRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: "email@domain.com"
+        password:
+          type: string
+          format: password
+          minLength: 6
+          example: "mypassword"
+      required:
+        - email
+        - password
+
+    PatchUsersUserIdRequest:
+      type: object
+      properties:
+        password:
+          type: string
+          format: password
+          minLength: 6
+          example: "newstrongpassword"
+      required:
+        - password
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: HTTP status code of the error
+          example: 400
+        error:
+          type: string
+          description: Error type or category
+          example: Bad Request
+        message:
+          type: string
+          description: Brief description of what went wrong
+          example: Invalid input data
+      required:
+        - code
+        - error
+        - message
+
+    GetPostTaskResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+            - pending
+            - in_progress
+            - completed
+          default: pending
+        user_id:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - status
+        - user_id
+        - createdAt
+        - updatedAt
+
+    PostTaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          example: "New task title"
+        description:
+          type: string
+          nullable: true
+          example: "Detailed task description"
+        status:
+          type: string
+          enum:
+            - pending
+            - in_progress
+            - completed
+          default: pending
+          example: "pending"
+      required:
+        - title
+
+    PatchTaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          example: "Updated task title"
+        description:
+          type: string
+          nullable: true
+          example: "Updated task description"
+        status:
+          type: string
+          enum:
+            - pending
+            - in_progress
+            - completed
+          example: "in_progress"
+
+    PostSessionRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          example: "email@domain.com"
+        password:
+          type: string
+          format: password
+          minLength: 6
+          example: "mypassword"
+      required:
+        - email
+        - password
+
+    PostSessionResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT token for authentication
+          example: "jwt.token.example"
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            BadRequest:
+              value:
+                code: 400
+                error: "Bad Request"
+                message: "Invalid input data"
+
+    ForbiddenError:
+      description: Access forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            ForbiddenError:
+              value:
+                code: 403
+                error: "Forbidden"
+                message: "You don't have permission to access this resource"
+            InvalidTokenError:
+              value:
+                code: 403
+                error: "Forbidden"
+                message: "Invalid or expired token"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            InternalServerError:
+              value:
+                code: 500
+                error: "Internal Server Error"
+                message: "An unexpected error occurred on the server"
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            NotFoundError:
+              value:
+                code: 404
+                error: "Not Found"
+                message: "The requested resource could not be found"
+
+    GoneError:
+      description: Resource no longer exists
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            GoneError:
+              value:
+                code: 410
+                error: "Gone"
+                message: "The requested resource is no longer available"
+
+    UnauthorizedError:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            UnauthorizedError:
+              value:
+                code: 401
+                error: "Unauthorized"
+                message: "Authentication is required to access this resource"
+
+
+
+x-tagGroups:
+  - name: API Documentation
+    tags:
+      - Authentication
+      - Users
+      - Tasks
+
+tags:
+  - name: Authentication
+    description: Authentication endpoints
+  - name: Users
+    description: User management endpoints
+  - name: Tasks
+    description: Task management endpoints
+
+paths:
+  /users:
+    post:
+      tags:
+        - Users
+      summary: Create a new user
+      description: Register a new user account
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostUsersRequest"
+      responses:
+        "201":
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Users"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                ConflictError:
+                  value:
+                    code: 409
+                    error: "Conflict"
+                    message: "Email already exists"
+    get:
+      tags:
+        - Users
+      summary: List all users
+      description: Get a list of all users
+      operationId: getUsers
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Users"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+
+  /users/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: ID of the user
+    get:
+      tags:
+        - Users
+      summary: Get user by ID
+      description: Get detailed information about a specific user
+      operationId: getUserById
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Users"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+    delete:
+      tags:
+        - Users
+      summary: Delete user account
+      description: Delete user's account and all associated tasks
+      operationId: deleteUser
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: User deleted successfully
+          # 204 responses should not have content
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - Users
+      summary: Update user
+      description: Update user information (currently only password)
+      operationId: updateUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchUsersUserIdRequest"
+      responses:
+        "200":
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Users"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /sessions:
+    post:
+      tags:
+        - Authentication
+      summary: Login to get JWT token
+      description: Authenticate user and receive JWT token
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostSessionRequest"
+      responses:
+        "200":
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostSessionResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+    delete:
+      tags:
+        - Authentication
+      summary: Delete current session
+      description: Delete the current user's session
+      operationId: deleteSession
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Session successfully deleted
+          # 204 responses should not have content
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tasks:
+    get:
+      tags:
+        - Tasks
+      summary: Get all tasks
+      operationId: getAllTasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination (starts from 1)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+        - name: sort
+          in: query
+          description: Sort field and direction (e.g., title:asc, createdAt:desc)
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter tasks by status
+          schema:
+            type: string
+            enum:
+              - pending
+              - in_progress
+              - completed
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page:
+                    type: integer
+                    description: Current page number
+                  limit:
+                    type: integer
+                    description: Number of items per page
+                  total:
+                    type: integer
+                    description: Total number of tasks
+                  tasks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/GetPostTaskResponse"
+                required:
+                  - page
+                  - limit
+                  - total
+                  - tasks
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    post:
+      tags:
+        - Tasks
+      summary: Create a new task
+      description: Create a new task
+      operationId: createTask
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostTaskRequest"
+      responses:
+        "201":
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetPostTaskResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tasks/{taskId}:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        description: ID of the task to modify
+        schema:
+          type: integer
+          format: int64
+    delete:
+      tags:
+        - Tasks
+      summary: Delete a task
+      description: Delete a specific task by ID
+      operationId: deleteTask
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Task successfully deleted
+          # 204 responses should not have content
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - Tasks
+      summary: Update a task
+      description: Update an existing task's fields
+      operationId: updateTask
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchTaskRequest"
+      responses:
+        "200":
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetPostTaskResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "410":
+          $ref: "#/components/responses/GoneError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"

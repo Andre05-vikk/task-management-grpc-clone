@@ -144,21 +144,41 @@ run_basic_tests() {
     echo "Running client tests..."
     OUTPUT=$(npm run client 2>&1)
 
-    # Check for expected output patterns
-    EXPECTED_PATTERNS=(
-      "User created with ID:|Error creating user:"
-      "Logged in with token:|Error logging in:"
-      "Retrieved [0-9]+ users|Error getting users:"
-      "All examples completed successfully|Error running examples:"
+    # Check for SUCCESS patterns only (no error acceptance)
+    SUCCESS_PATTERNS=(
+      "User created with ID:"
+      "Logged in with token:"
+      "Retrieved [0-9]+ users"
+      "All examples completed successfully"
+    )
+
+    # Check for ERROR patterns (these should NOT be present)
+    ERROR_PATTERNS=(
+      "Error creating user:"
+      "Error logging in:"
+      "Error getting users:"
+      "Error running examples:"
     )
 
     FAILED=0
-    for pattern in "${EXPECTED_PATTERNS[@]}"; do
+
+    # Check that all success patterns are present
+    for pattern in "${SUCCESS_PATTERNS[@]}"; do
         if echo "$OUTPUT" | grep -qE "$pattern"; then
-            echo -e "${GREEN}✓ Found expected output: $pattern${NC}"
+            echo -e "${GREEN}✓ Found success: $pattern${NC}"
         else
-            echo -e "${RED}✗ Missing expected output: $pattern${NC}"
+            echo -e "${RED}✗ Missing success: $pattern${NC}"
             FAILED=1
+        fi
+    done
+
+    # Check that no error patterns are present
+    for pattern in "${ERROR_PATTERNS[@]}"; do
+        if echo "$OUTPUT" | grep -qE "$pattern"; then
+            echo -e "${RED}✗ Found error: $pattern${NC}"
+            FAILED=1
+        else
+            echo -e "${GREEN}✓ No error: $pattern${NC}"
         fi
     done
 

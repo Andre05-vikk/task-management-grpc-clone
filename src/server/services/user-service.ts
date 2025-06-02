@@ -12,6 +12,14 @@ export const userServiceHandlers = {
     const password = call.request.getPassword();
     const name = call.request.getName();
 
+    // Validate required fields
+    if (!email || !password) {
+      return callback({
+        code: grpc.status.INVALID_ARGUMENT,
+        message: 'Email and password are required'
+      });
+    }
+
     // To match REST API behavior, we use email as username
     const userEmail = email || username;
 
@@ -85,7 +93,7 @@ export const userServiceHandlers = {
   },
 
   getUser: (call, callback) => {
-    const userId = call.request.getUserid ? call.request.getUserid() : call.request.userId;
+    const userId = call.request.getUserid();
 
     const user = users.find(u => u.id === userId);
 

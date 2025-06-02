@@ -1,0 +1,23 @@
+CREATE DATABASE IF NOT EXISTS notion_clone;
+USE notion_clone;
+
+CREATE TABLE IF NOT EXISTS users
+(
+    id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    username   VARCHAR(191) UNIQUE NOT NULL,
+    password   VARCHAR(255)        NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tasks
+(
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    title       VARCHAR(191) NOT NULL,
+    description TEXT         NULL,
+    status      ENUM ('pending', 'in_progress', 'completed') DEFAULT 'pending',
+    user_id     INT UNSIGNED NOT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
