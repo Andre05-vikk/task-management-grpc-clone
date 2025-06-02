@@ -1,5 +1,5 @@
 import * as grpc from '@grpc/grpc-js';
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import { sessions } from '../data/store';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -30,19 +30,17 @@ export function authMiddleware(call: grpc.ServerUnaryCall<any, any>, callback: g
   const token = metadata.get('authorization')[0] as string;
 
   if (!token) {
-    return callback({
-      code: grpc.status.UNAUTHENTICATED,
-      message: 'Authentication required'
-    });
+    const error = new Error('Authentication required');
+    (error as any).code = grpc.status.UNAUTHENTICATED;
+    return callback(error);
   }
 
   const payload = verifyToken(token);
 
   if (!payload) {
-    return callback({
-      code: grpc.status.UNAUTHENTICATED,
-      message: 'Invalid or expired token'
-    });
+    const error = new Error('Invalid or expired token');
+    (error as any).code = grpc.status.UNAUTHENTICATED;
+    return callback(error);
   }
 
   // In a real implementation, we would add user to call context

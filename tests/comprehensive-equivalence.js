@@ -90,8 +90,20 @@ async function restCall(method, endpoint, data = null, token = null) {
     
     try {
         const response = await axios(config);
-        return { success: true, data: response.data, status: response.status };
+        return { 
+            success: true, 
+            data: response.data, 
+            status: response.status 
+        };
     } catch (error) {
+        // Handle 204 No Content as success (for DELETE operations)
+        if (error.response && error.response.status === 204) {
+            return { 
+                success: true, 
+                data: null, 
+                status: 204 
+            };
+        }
         return { 
             success: false, 
             error: error.response?.data || error.message,
@@ -112,10 +124,8 @@ async function testUserCreation() {
     
     // gRPC API
     const grpcRequest = new messages.CreateUserRequest();
-    grpcRequest.setEmail(TEST_USER.email + '_grpc');
-    grpcRequest.setUsername(TEST_USER.email + '_grpc');
+    grpcRequest.setEmail(TEST_USER.email + '_grpc'); // Different email for gRPC to avoid conflicts
     grpcRequest.setPassword(TEST_USER.password);
-    grpcRequest.setName(TEST_USER.name);
     
     let grpcResult;
     try {
@@ -129,20 +139,21 @@ async function testUserCreation() {
     assert(grpcResult && !grpcResult.error, 'gRPC user creation succeeded');
     
     if (restResult.success && grpcResult && !grpcResult.error) {
-        const restUser = restResult.data;
-        const grpcUser = grpcResult.getUser();
+        const restUserData = restResult.data;
+            const grpcUser = grpcResult.getUser();
 
-        assert(typeof restUser.id !== 'undefined', 'REST returns user ID');
-        assert(grpcUser && grpcUser.getId(), 'gRPC returns user ID');
-        assert(restUser.username === TEST_USER.email, 'REST user has correct email');
-        assert(grpcUser && grpcUser.getEmail() === TEST_USER.email + '_grpc', 'gRPC user has correct email');
+            // REST API returns: {id, username, createdAt, updatedAt}
+            assert(typeof restUserData.id !== 'undefined', 'REST returns user ID');
+            assert(grpcUser && grpcUser.getId(), 'gRPC returns user ID');
+            assert(restUserData.username === TEST_USER.email, 'REST user has correct username (email)');
+            assert(grpcUser && grpcUser.getEmail() === TEST_USER.email + '_grpc', 'gRPC user has correct email');
 
-        // Store for later tests
-        global.restUserId = restUser.id;
-        global.grpcUserId = grpcUser ? grpcUser.getId() : null;
-        global.restUserEmail = restUser.username;
-        global.grpcUserEmail = grpcUser ? grpcUser.getUsername() : null; // Use username for login
-    }
+            // Store for later tests
+            global.restUserId = restUserData.id;
+            global.grpcUserId = grpcUser ? grpcUser.getId() : null;
+            global.restUserEmail = restUserData.username; // username field contains email
+            global.grpcUserEmail = grpcUser ? grpcUser.getEmail() : null;
+        }
 }
 
 async function testAuthentication() {
@@ -268,6 +279,7 @@ async function testTaskOperations() {
     assert(grpcTask && !grpcTask.error, 'gRPC task creation succeeded');
     
     if (restTask.success && grpcTask && !grpcTask.error) {
+        // REST API returns: {success, message, taskId, title, description, status}
         global.restTaskId = restTask.data.taskId;
         global.grpcTaskId = grpcTask.getTask().getId();
 
@@ -302,6 +314,210 @@ async function testErrorHandling() {
     assert(grpcInvalidLogin.code === grpc.status.UNAUTHENTICATED, 'gRPC returns UNAUTHENTICATED for invalid login');
 }
 
+async function testUpdateUser() {
+    log('\n=== Testing Update User ===');
+    
+    const updatedPassword = 'newpassword123';
+    
+    // REST API - only password updates are supported
+    const restUpdate = await restCall('PATCH', `/users/${global.restUserId}`, {
+        password: updatedPassword
+    }, global.restToken);
+    
+    // gRPC API
+    const grpcRequest = new messages.UpdateUserRequest();
+    grpcRequest.setUserid(global.grpcUserId);
+    grpcRequest.setPassword(updatedPassword);
+    
+    let grpcUpdate;
+    try {
+        grpcUpdate = await grpcCall(userClient, 'updateUser', grpcRequest);
+    } catch (error) {
+        grpcUpdate = { error: error.message };
+    }
+    
+    assert(restUpdate.success, 'REST user update succeeded');
+    assert(grpcUpdate && !grpcUpdate.error, 'gRPC user update succeeded');
+    
+    if (restUpdate.success && grpcUpdate && !grpcUpdate.error) {
+        // Verify the user still has the same ID and email
+        assert(restUpdate.data.id == global.restUserId, 'REST user maintains ID');
+        assert(grpcUpdate.getUser().getId() === global.grpcUserId, 'gRPC user maintains ID');
+    }
+}
+
+async function testListTasks() {
+    log('\n=== Testing List Tasks ===');
+    
+    // REST API
+    const restTasks = await restCall('GET', '/tasks', null, global.restToken);
+    
+    // gRPC API - need to set user ID for filtering
+    const grpcRequest = new messages.GetTasksRequest();
+    grpcRequest.setUserid(global.grpcUserId);
+    
+    let grpcTasks;
+    try {
+        grpcTasks = await grpcCall(taskClient, 'getTasks', grpcRequest);
+    } catch (error) {
+        grpcTasks = { error: error.message };
+    }
+    
+    assert(restTasks.success, 'REST get tasks succeeded');
+    assert(grpcTasks && !grpcTasks.error, 'gRPC get tasks succeeded');
+    
+    if (restTasks.success && grpcTasks && !grpcTasks.error) {
+        // REST API returns: {page, limit, total, tasks: [...]}
+        assert(restTasks.data.tasks && Array.isArray(restTasks.data.tasks), 'REST returns tasks array in data.tasks');
+        assert(grpcTasks.getTasksList(), 'gRPC returns list of tasks');
+    }
+}
+
+async function testUpdateTask() {
+    log('\n=== Testing Update Task ===');
+    
+    const updatedTitle = 'Updated Test Task';
+    
+    // REST API
+    const restUpdate = await restCall('PATCH', `/tasks/${global.restTaskId}`, {
+        title: updatedTitle
+    }, global.restToken);
+    
+    // gRPC API
+    const grpcRequest = new messages.UpdateTaskRequest();
+    grpcRequest.setTaskid(global.grpcTaskId);
+    grpcRequest.setTitle(updatedTitle);
+    
+    let grpcUpdate;
+    try {
+        grpcUpdate = await grpcCall(taskClient, 'updateTask', grpcRequest);
+    } catch (error) {
+        grpcUpdate = { error: error.message };
+    }
+    
+    assert(restUpdate.success, 'REST task update succeeded');
+    assert(grpcUpdate && !grpcUpdate.error, 'gRPC task update succeeded');
+    
+    if (restUpdate.success && grpcUpdate && !grpcUpdate.error) {
+        // REST API returns: {success: true, message: 'Task updated successfully'}
+        // gRPC returns the updated task object
+        assert(restUpdate.data.success === true, 'REST task update returns success');
+        assert(grpcUpdate.getTask().getTitle() === updatedTitle, 'gRPC task has updated title');
+    }
+}
+
+async function testDeleteTask() {
+    log('\n=== Testing Delete Task ===');
+    
+    // REST API
+    const restDelete = await restCall('DELETE', `/tasks/${global.restTaskId}`, null, global.restToken);
+    
+    // gRPC API
+    const grpcRequest = new messages.DeleteTaskRequest();
+    grpcRequest.setTaskid(global.grpcTaskId);
+    
+    let grpcDelete;
+    try {
+        grpcDelete = await grpcCall(taskClient, 'deleteTask', grpcRequest);
+    } catch (error) {
+        grpcDelete = { error: error.message };
+    }
+    
+    // REST API returns 204 status for DELETE operations
+    assert(restDelete.status === 204 || restDelete.success, 'REST task deletion succeeded');
+    assert(grpcDelete && !grpcDelete.error, 'gRPC task deletion succeeded');
+}
+
+async function testLogout() {
+    log('\n=== Testing Logout ===');
+    
+    // REST API
+    const restLogout = await restCall('DELETE', '/sessions', null, global.restToken);
+    
+    // gRPC API
+    const grpcRequest = new messages.LogoutRequest();
+    grpcRequest.setToken(global.grpcToken);
+    
+    let grpcLogout;
+    try {
+        grpcLogout = await grpcCall(authClient, 'logout', grpcRequest);
+    } catch (error) {
+        grpcLogout = { error: error.message };
+    }
+    
+    // REST API returns 204 status for logout
+    assert(restLogout.status === 204 || restLogout.success, 'REST logout succeeded');
+    assert(grpcLogout && !grpcLogout.error, 'gRPC logout succeeded');
+}
+
+async function testDeleteUser() {
+    log('\n=== Testing Delete User ===');
+    
+    // First check if the user still exists by trying to get all users
+    const checkUsers = await restCall('GET', '/users', null, global.restToken);
+    log(`Current users before deletion: ${JSON.stringify(checkUsers)}`, 'warning');
+    
+    // Create a completely fresh user for deletion test to avoid conflicts
+    const deleteTestUser = {
+        email: `delete_test_${Date.now()}@example.com`,
+        password: 'password123'
+    };
+    
+    // Create a fresh user for REST deletion test
+    const restUserCreate = await restCall('POST', '/users', {
+        email: deleteTestUser.email,
+        password: deleteTestUser.password
+    });
+    
+    log(`Fresh REST user created: ${JSON.stringify(restUserCreate)}`, 'warning');
+    
+    // Login with the fresh user
+    const restLogin = await restCall('POST', '/sessions', {
+        email: deleteTestUser.email,
+        password: deleteTestUser.password
+    });
+    
+    log(`Fresh REST Login Result: ${JSON.stringify(restLogin)}`, 'warning');
+    
+    const restToken = restLogin.success ? restLogin.data.token : null;
+    const restUserId = restUserCreate.success ? restUserCreate.data.id : null;
+    
+    // REST API - delete user using their own token
+    const restDelete = await restCall('DELETE', `/users/${restUserId}`, null, restToken);
+    
+    // Debug logging
+    log(`REST Delete Result: ${JSON.stringify(restDelete)}`, 'warning');
+    
+    // gRPC API - create a fresh token for the gRPC user to delete themselves
+    const grpcUserCreate = new messages.CreateUserRequest();
+    grpcUserCreate.setEmail(`delete_test_grpc_${Date.now()}@example.com`);
+    grpcUserCreate.setPassword(deleteTestUser.password);
+    
+    let grpcUserResult;
+    try {
+        grpcUserResult = await grpcCall(userClient, 'createUser', grpcUserCreate);
+    } catch (error) {
+        grpcUserResult = { error: error.message };
+    }
+    
+    const grpcUserId = grpcUserResult && grpcUserResult.getUser() ? grpcUserResult.getUser().getId() : null;
+    
+    // gRPC API - delete user
+    const grpcRequest = new messages.DeleteUserRequest();
+    grpcRequest.setUserid(grpcUserId);
+    
+    let grpcDelete;
+    try {
+        grpcDelete = await grpcCall(userClient, 'deleteUser', grpcRequest);
+    } catch (error) {
+        grpcDelete = { error: error.message };
+    }
+    
+    // REST API returns 204 status for DELETE operations
+    assert(restDelete.status === 204 || restDelete.success, 'REST user deletion succeeded');
+    assert(grpcDelete && !grpcDelete.error, 'gRPC user deletion succeeded');
+}
+
 async function runAllTests() {
     log('🚀 Starting Comprehensive REST vs gRPC Equivalence Tests', 'info');
     
@@ -310,7 +526,13 @@ async function runAllTests() {
         await testAuthentication();
         await testGetUsers();
         await testGetUserById();
+        await testUpdateUser();
         await testTaskOperations();
+        await testListTasks();
+        await testUpdateTask();
+        await testDeleteTask();
+        await testLogout();
+        await testDeleteUser();
         await testErrorHandling();
         
         log('\n📊 Test Results:', 'info');

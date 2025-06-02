@@ -3,7 +3,10 @@
 # Functional Equivalence Test between REST and gRPC APIs
 # This script tests that both APIs provide identical functionality
 
-# Colors for output
+# Colo    GRPC_TASK_OUTPUT=$(node -e "
+        const grpc = require('@grpc/grpc-js');
+        const messages = require('./dist/src/proto/task_management_pb');
+        const services = require('./dist/src/proto/task_management_grpc_pb');or output
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
@@ -82,8 +85,8 @@ test_user_creation() {
     echo "Testing gRPC API user creation..."
     GRPC_OUTPUT=$(node -e "
         const grpc = require('@grpc/grpc-js');
-        const messages = require('./dist/src/proto/proto/task_management_pb');
-        const services = require('./dist/src/proto/proto/task_management_grpc_pb');
+        const messages = require('./dist/src/proto/task_management_pb');
+        const services = require('./dist/src/proto/task_management_grpc_pb');
         
         const client = new services.UserServiceClient('localhost:$GRPC_PORT', grpc.credentials.createInsecure());
         
