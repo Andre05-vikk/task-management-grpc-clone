@@ -1,8 +1,8 @@
 import * as grpc from '@grpc/grpc-js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import * as messages from '../../proto/proto/task_management_pb';
-import * as services from '../../proto/proto/task_management_grpc_pb';
+import * as messages from '../../proto/task_management_pb';
+import * as services from '../../proto/task_management_grpc_pb';
 import { users, sessions } from '../data/store';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
