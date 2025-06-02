@@ -28,16 +28,53 @@ if ! command -v npm &> /dev/null; then
   exit 1
 fi
 
-echo -e "${BLUE}📦 Installing dependencies...${NC}"
+echo -e "${BLUE}📦 Installing gRPC dependencies...${NC}"
 npm install
 
-echo -e "${BLUE}🔨 Building the project...${NC}"
+echo -e "${BLUE}📦 Installing REST API dependencies...${NC}"
+cd notion-clone-api
+npm install
+cd ..
+
+echo -e "${BLUE}🔨 Building the gRPC project...${NC}"
 npm run build
 
-echo -e "${BLUE}🎯 Starting the gRPC server...${NC}"
-echo -e "${GREEN}✅ Server will start on port 50051${NC}"
-echo -e "${YELLOW}💡 To test the API, run: npm run client${NC}"
+echo -e "${BLUE}🎯 Starting both servers...${NC}"
+echo -e "${GREEN}✅ gRPC Server will start on port 50051${NC}"
+echo -e "${GREEN}✅ REST API Server will start on port 5001${NC}"
+echo -e "${YELLOW}💡 To test the gRPC API, run: npm run client${NC}"
 echo -e "${YELLOW}💡 To run all tests, run: npm run test:all${NC}"
 echo ""
 
-npm start
+# Start REST API in background
+echo -e "${BLUE}🚀 Starting REST API server...${NC}"
+cd notion-clone-api
+npm start > ../rest-api.log 2>&1 &
+REST_API_PID=$!
+cd ..
+
+# Wait a moment for REST API to start
+sleep 3
+
+# Start gRPC server
+echo -e "${BLUE}🚀 Starting gRPC server...${NC}"
+npm start &
+GRPC_PID=$!
+
+# Function to cleanup background processes
+cleanup() {
+    echo -e "\n${YELLOW}🛑 Shutting down servers...${NC}"
+    kill $REST_API_PID 2>/dev/null || true
+    kill $GRPC_PID 2>/dev/null || true
+    echo -e "${GREEN}✅ Servers stopped${NC}"
+    exit 0
+}
+
+# Set up signal handlers
+trap cleanup SIGINT SIGTERM
+
+echo -e "${GREEN}✅ Both servers are running!${NC}"
+echo -e "${YELLOW}Press Ctrl+C to stop both servers${NC}"
+
+# Wait for the gRPC server to finish (or until interrupted)
+wait $GRPC_PID

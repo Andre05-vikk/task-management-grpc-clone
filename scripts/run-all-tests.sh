@@ -12,11 +12,22 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}=== Complete Test Suite for Task Management APIs ===${NC}"
 echo -e "${YELLOW}This script will:${NC}"
+echo -e "${YELLOW}0. Install dependencies${NC}"
 echo -e "${YELLOW}1. Build the gRPC project${NC}"
 echo -e "${YELLOW}2. Start both REST and gRPC APIs${NC}"
 echo -e "${YELLOW}3. Run basic gRPC tests${NC}"
 echo -e "${YELLOW}4. Run functional equivalence tests${NC}"
 echo -e "${YELLOW}5. Clean up all processes${NC}"
+
+# Install dependencies
+echo -e "\n${BLUE}Installing dependencies...${NC}"
+echo -e "${BLUE}📦 Installing gRPC dependencies...${NC}"
+npm install
+
+echo -e "${BLUE}📦 Installing REST API dependencies...${NC}"
+cd notion-clone-api
+npm install
+cd ..
 
 # Configuration
 REST_PORT=5001
