@@ -211,7 +211,7 @@ main() {
     
     # Step 1: Build the project
     echo -e "\n${BLUE}=== Step 1: Building gRPC Project ===${NC}"
-    if npm run build && mkdir -p dist/src/proto/proto && cp -r src/proto/proto/* dist/src/proto/proto/; then
+    if npm run build; then
         echo -e "${GREEN}✓ Build successful${NC}"
         ((tests_passed++))
     else
