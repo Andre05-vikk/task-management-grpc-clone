@@ -37,10 +37,19 @@ npm run test:all
 ```
 Expected result: `Steps completed: 5/5 🎉 All tests passed!`
 
-### Docker (alternative)
+### Database setup (for full testing)
+
+**Start MariaDB database:**
 
 ```bash
-docker-compose up --build
+./start-db.sh
+```
+
+This starts the MariaDB database needed for REST API comparison tests.
+
+**Then run full tests:**
+```bash
+npm run test:all
 ```
 
 ## API Overview
@@ -80,7 +89,8 @@ npm start
 
 | Command | Description |
 |---------|-------------|
-| `./start.sh` | **Quick start** - install, build, and run |
+| `./start.sh` | **Quick start** - install, build, and run gRPC only |
+| `./start-db.sh` | **Database** - start MariaDB for full testing |
 | `npm run client` | Run client example |
 | `npm run test:all` | Complete test suite |
 | `npm start` | Start gRPC server |

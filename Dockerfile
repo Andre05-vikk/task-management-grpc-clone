@@ -11,7 +11,7 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Build the application
+# Build the application (proto files are pre-generated)
 RUN npm run build
 
 # Expose the gRPC port

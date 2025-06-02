@@ -19,6 +19,7 @@ process.env.API_URL = API_URL;
 // DB config
 const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 3306,
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || 'root',
     database: process.env.DB_DATABASE || 'notion_clone',
@@ -62,6 +63,7 @@ app.locals.tokenBlacklist = tokenBlacklist;
     try {
         console.log('Attempting to connect to database with config:', {
             host: dbConfig.host,
+            port: dbConfig.port,
             user: dbConfig.user,
             database: dbConfig.database,
             // Not logging password for security reasons
