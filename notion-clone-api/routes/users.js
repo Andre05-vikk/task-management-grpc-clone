@@ -5,9 +5,13 @@ const bcrypt = require('bcrypt');
 
 // POST /users - Create a new user
 router.post('/', async (req, res) => {
+    console.log('🔵 REST API - POST /users (create user)');
+    console.log('  Request body:', req.body);
+    
     const { email, password } = req.body;
 
     if (!email || !password) {
+        console.log('  ❌ Missing email or password');
         return res.status(400).json({
             code: 400,
             error: 'Bad Request',
@@ -15,6 +19,7 @@ router.post('/', async (req, res) => {
         });
     }
     if (password.length < 6) {
+        console.log('  ❌ Password too short');
         return res.status(400).json({
             code: 400,
             error: 'Bad Request',
@@ -61,6 +66,8 @@ router.post('/', async (req, res) => {
 
 // GET /users
 router.get('/', (req, res, next) => req.app.locals.authenticateToken(req, res, next), async (req, res) => {
+    console.log('🔵 REST API - GET /users');
+    
     try {
         const pool = req.app.locals.pool;
         const conn = await pool.getConnection();
@@ -83,6 +90,9 @@ router.get('/', (req, res, next) => req.app.locals.authenticateToken(req, res, n
 
 // GET /users/:userId
 router.get('/:userId', (req, res, next) => req.app.locals.authenticateToken(req, res, next), async (req, res) => {
+    console.log('🔵 REST API - GET /users/:userId');
+    console.log('  Request params: { userId:', req.params.userId, '}');
+    
     try {
         const pool = req.app.locals.pool;
         const conn = await pool.getConnection();

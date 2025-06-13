@@ -3,6 +3,8 @@ import path from 'path';
 import { authServiceHandlers } from './services/auth-service';
 import { userServiceHandlers } from './services/user-service';
 import { taskServiceHandlers } from './services/task-service';
+import { testConnection } from './data/database';
+import { setupDatabase } from './data/setup-db';
 
 // Import generated proto services
 import * as services from '../proto/task_management_grpc_pb';
@@ -10,7 +12,21 @@ import * as protoDescriptor from '../proto/task_management_pb';
 
 const PORT = process.env.PORT || 50051;
 
-function main() {
+async function main() {
+  // Setup database tables first
+  const dbSetup = await setupDatabase();
+  if (!dbSetup) {
+    console.error('Failed to setup database tables. Exiting...');
+    process.exit(1);
+  }
+
+  // Test database connection
+  const dbConnected = await testConnection();
+  if (!dbConnected) {
+    console.error('Failed to connect to database. Exiting...');
+    process.exit(1);
+  }
+
   const server = new grpc.Server();
 
   // Register services

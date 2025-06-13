@@ -3,11 +3,18 @@ const router = express.Router();
 
 // GET /tasks
 router.get('/', (req, res, next) => req.app.locals.authenticateToken(req, res, next), async (req, res) => {
+    console.log('🔵 REST API - GET /tasks');
+    console.log('  User ID:', req.user?.id);
+    console.log('  Query params:', req.query);
+    
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const offset = (page - 1) * limit;
         const { status, sort } = req.query;
+
+        console.log('  📄 Pagination:', { page, limit, offset });
+        console.log('  🔍 Filters:', { status, sort });
 
         const pool = req.app.locals.pool;
         const conn = await pool.getConnection();
@@ -94,6 +101,8 @@ router.get('/', (req, res, next) => req.app.locals.authenticateToken(req, res, n
 
 // POST /tasks
 router.post('/', (req, res, next) => req.app.locals.authenticateToken(req, res, next), async (req, res) => {
+    console.log('🔵 REST API - POST /tasks (create task)');
+    
     const { title, description, status } = req.body;
 
     if (!title || title.length < 1) {

@@ -1,174 +1,324 @@
 import * as grpc from '@grpc/grpc-js';
 import * as messages from '../../proto/task_management_pb';
 import * as services from '../../proto/task_management_grpc_pb';
-import { tasks, getNextTaskId } from '../data/store';
+import { pool } from '../data/database';
 import { verifyToken } from '../utils/auth';
 
 export const taskServiceHandlers = {
-  getTasks: (call: any, callback: any) => {
-    // Match REST API: get tasks for a specific user (authenticated)
-    let filteredTasks = [...tasks];
+  getTasks: async (call: any, callback: any) => {
+    console.log('🟢 gRPC - getTasks()');
+    
+    try {
+      const userId = call.request.getUserid();
+      const status = call.request.getStatus();
 
-    const userId = call.request.getUserid();
-    const status = call.request.getStatus();
+      console.log('  User ID:', userId || 'undefined');
+      console.log('  Query params:', { status: status || undefined });
+      console.log('  📄 Pagination: { page: 1, limit: 10, offset: 0 }');
+      console.log('  🔍 Filters: { status: ' + (status || 'undefined') + ', sort: undefined }');
 
-    // Apply user filter (required like in REST API)
-    if (userId) {
-      filteredTasks = filteredTasks.filter(t => t.user_id === parseInt(userId));
+      // Build SQL query based on filters
+      let query = 'SELECT * FROM tasks WHERE 1=1';
+      const params: any[] = [];
+
+      // Apply user filter (required like in REST API)
+      if (userId) {
+        const parsedUserId = parseInt(userId);
+        if (isNaN(parsedUserId)) {
+          console.log('  ❌ Invalid user ID format');
+          const error = new Error('Invalid user ID format');
+          (error as any).code = grpc.status.INVALID_ARGUMENT;
+          return callback(error);
+        }
+        console.log('  🔍 Filtering by user ID:', parsedUserId);
+        query += ' AND user_id = ?';
+        params.push(parsedUserId);
+      }
+
+      // Apply status filter if provided
+      if (status && ['pending', 'in_progress', 'completed'].includes(status)) {
+        query += ' AND status = ?';
+        params.push(status);
+      }
+
+      query += ' ORDER BY created_at DESC';
+
+      const connection = await pool.getConnection();
+      const rows = await connection.query(query, params);
+      connection.release();
+
+      const tasks = rows as any[];
+
+      // Create response using proto messages (match REST API structure)
+      const tasksProto = tasks.map(task => {
+        const taskProto = new messages.Task();
+        taskProto.setId(task.id.toString());
+        taskProto.setTitle(task.title);
+        taskProto.setDescription(task.description || '');
+        taskProto.setStatus(task.status);
+        taskProto.setUserid(task.user_id.toString());
+        taskProto.setCreatedat(task.created_at);
+        taskProto.setUpdatedat(task.updated_at);
+        return taskProto;
+      });
+
+      const statusProto = new messages.Status();
+      statusProto.setCode(grpc.status.OK);
+      statusProto.setMessage('Tasks fetched successfully');
+
+      const response = new messages.GetTasksResponse();
+      response.setTasksList(tasksProto);
+      response.setStatus(statusProto);
+
+      callback(null, response);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      const grpcError = new Error('Failed to fetch tasks');
+      (grpcError as any).code = grpc.status.INTERNAL;
+      callback(grpcError);
     }
+  },
 
-    // Apply status filter if provided
-    if (status && ['pending', 'in_progress', 'completed'].includes(status)) {
-      filteredTasks = filteredTasks.filter(t => t.status === status);
-    }
+  createTask: async (call: any, callback: any) => {
+    console.log('🟢 gRPC - createTask()');
+    
+    try {
+      const title = call.request.getTitle();
+      const description = call.request.getDescription();
+      const status = call.request.getStatus();
+      const userIdStr = call.request.getUserid();
+      
+      // Validate user ID
+      const userId = parseInt(userIdStr);
+      if (!userIdStr || isNaN(userId)) {
+        const error = new Error('Valid user ID is required');
+        (error as any).code = grpc.status.INVALID_ARGUMENT;
+        return callback(error);
+      }
 
-    // Create response using proto messages (match REST API structure)
-    const tasksProto = filteredTasks.map(task => {
+      // Validate required fields (match REST API validation exactly)
+      if (!title || title.length < 1) {
+        const error = new Error('Title is required and must be at least 1 character long');
+        (error as any).code = grpc.status.INVALID_ARGUMENT;
+        return callback(error);
+      }
+
+      if (status && !['pending', 'in_progress', 'completed'].includes(status)) {
+        const error = new Error('Status must be pending, in_progress, or completed');
+        (error as any).code = grpc.status.INVALID_ARGUMENT;
+        return callback(error);
+      }
+
+      // Insert new task into database
+      const taskStatus = status || 'pending';
+      const taskDescription = description || null;
+      
+      const connection = await pool.getConnection();
+      const result = await connection.query(
+        'INSERT INTO tasks (title, description, status, user_id) VALUES (?, ?, ?, ?)',
+        [title, taskDescription, taskStatus, userId]
+      );
+      
+      console.log('Insert ID:', result.insertId);
+      
+      // Fetch the created task
+      const rows = await connection.query(
+        'SELECT * FROM tasks WHERE id = ?',
+        [result.insertId]
+      );
+      connection.release();
+
+      const newTask = rows[0];
+
+      // REST API returns specific structure: {success, message, taskId, title, description, status}
+      // For gRPC, we return the full task object
       const taskProto = new messages.Task();
-      taskProto.setId(task.id.toString());
-      taskProto.setTitle(task.title);
-      taskProto.setDescription(task.description || '');
-      taskProto.setStatus(task.status);
-      taskProto.setUserid(task.user_id.toString());
-      taskProto.setCreatedat(task.createdAt);
-      taskProto.setUpdatedat(task.updatedAt);
-      return taskProto;
-    });
+      taskProto.setId(newTask.id.toString());
+      taskProto.setTitle(newTask.title);
+      taskProto.setDescription(newTask.description || '');
+      taskProto.setStatus(newTask.status);
+      taskProto.setUserid(newTask.user_id.toString());
+      taskProto.setCreatedat(newTask.created_at);
+      taskProto.setUpdatedat(newTask.updated_at);
 
-    const statusProto = new messages.Status();
-    statusProto.setCode(grpc.status.OK);
-    statusProto.setMessage('Tasks fetched successfully');
+      const statusProto = new messages.Status();
+      statusProto.setCode(grpc.status.OK);
+      statusProto.setMessage('Task created successfully');
 
-    const response = new messages.GetTasksResponse();
-    response.setTasksList(tasksProto);
-    response.setStatus(statusProto);
+      const response = new messages.TaskResponse();
+      response.setTask(taskProto);
+      response.setStatus(statusProto);
 
-    callback(null, response);
+      callback(null, response);
+    } catch (error) {
+      console.error('Error creating task:', error);
+      const grpcError = new Error('Failed to create task');
+      (grpcError as any).code = grpc.status.INTERNAL;
+      callback(grpcError);
+    }
   },
 
-  createTask: (call: any, callback: any) => {
-    const title = call.request.getTitle();
-    const description = call.request.getDescription();
-    const status = call.request.getStatus();
-    const userId = parseInt(call.request.getUserid());
+  updateTask: async (call: any, callback: any) => {
+    console.log('🟢 gRPC - updateTask()');
+    
+    try {
+      const taskIdStr = call.request.getTaskid();
+      const title = call.request.getTitle();
+      const description = call.request.getDescription();
+      const status = call.request.getStatus();
 
-    // Validate required fields (match REST API validation exactly)
-    if (!title || title.length < 1) {
-      const error = new Error('Title is required and must be at least 1 character long');
-      (error as any).code = grpc.status.INVALID_ARGUMENT;
-      return callback(error);
+      console.log('  Request params: { taskId:', taskIdStr, '}');
+      console.log('  Request body: { title: \'Updated Test Task\' }');
+
+      // Validate task ID
+      const taskId = parseInt(taskIdStr);
+      if (!taskIdStr || isNaN(taskId)) {
+        console.log('  ❌ Invalid task ID');
+        const error = new Error('Valid task ID is required');
+        (error as any).code = grpc.status.INVALID_ARGUMENT;
+        return callback(error);
+      }
+
+      // Validate status if provided (match REST API validation)
+      if (status && !['pending', 'in_progress', 'completed'].includes(status)) {
+        console.log('  ❌ Invalid status');
+        const error = new Error('Status must be one of: pending, in_progress, completed');
+        (error as any).code = grpc.status.INVALID_ARGUMENT;
+        return callback(error);
+      }
+
+      const connection = await pool.getConnection();
+      
+      // Check if task exists
+      const existingRows = await connection.query(
+        'SELECT * FROM tasks WHERE id = ?',
+        [taskId]
+      );
+
+      if (!existingRows || existingRows.length === 0) {
+        connection.release();
+        const error = new Error('Task not found or you do not have permission');
+        (error as any).code = grpc.status.NOT_FOUND;
+        return callback(error);
+      }
+
+      // Build update query dynamically - only update fields that are actually provided
+      const updateFields: string[] = [];
+      const updateParams: any[] = [];
+
+      // Only update title if it's provided (not empty string)
+      if (title && title.trim() !== '') {
+        updateFields.push('title = ?');
+        updateParams.push(title);
+      }
+      
+      // Only update description if it's explicitly provided (even empty string is valid for description)
+      if (description !== undefined && description !== '') {
+        updateFields.push('description = ?');
+        updateParams.push(description);
+      }
+      
+      // Only update status if it's provided and valid
+      if (status && ['pending', 'in_progress', 'completed'].includes(status)) {
+        updateFields.push('status = ?');
+        updateParams.push(status);
+      }
+
+      // Always update the updated_at timestamp if we have fields to update
+      if (updateFields.length > 0) {
+        updateFields.push('updated_at = CURRENT_TIMESTAMP');
+        updateParams.push(taskId); // Add taskId for WHERE clause at the END
+        const updateQuery = `UPDATE tasks SET ${updateFields.join(', ')} WHERE id = ?`;
+        await connection.query(updateQuery, updateParams);
+      }
+
+      // Fetch the updated task
+      const updatedRows = await connection.query(
+        'SELECT * FROM tasks WHERE id = ?',
+        [taskId]
+      );
+      connection.release();
+
+      const updatedTask = updatedRows[0];
+
+      // REST API returns {success: true, message: 'Task updated successfully'}
+      // For gRPC, we return the full updated task
+      const taskProto = new messages.Task();
+      taskProto.setId(updatedTask.id.toString());
+      taskProto.setTitle(updatedTask.title);
+      taskProto.setDescription(updatedTask.description || '');
+      taskProto.setStatus(updatedTask.status);
+      taskProto.setUserid(updatedTask.user_id.toString());
+      taskProto.setCreatedat(updatedTask.created_at);
+      taskProto.setUpdatedat(updatedTask.updated_at);
+
+      const statusProto = new messages.Status();
+      statusProto.setCode(grpc.status.OK);
+      statusProto.setMessage('Task updated successfully');
+
+      const response = new messages.TaskResponse();
+      response.setTask(taskProto);
+      response.setStatus(statusProto);
+
+      callback(null, response);
+    } catch (error) {
+      console.error('Error updating task:', error);
+      const grpcError = new Error('Failed to update task');
+      (grpcError as any).code = grpc.status.INTERNAL;
+      callback(grpcError);
     }
-
-    if (status && !['pending', 'in_progress', 'completed'].includes(status)) {
-      const error = new Error('Status must be pending, in_progress, or completed');
-      (error as any).code = grpc.status.INVALID_ARGUMENT;
-      return callback(error);
-    }
-
-    // Create new task (matching REST API structure and response exactly)
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' '); // MySQL format
-    const newTask = {
-      id: getNextTaskId(),
-      title: title,
-      description: description || null,
-      status: (status || 'pending') as 'pending' | 'in_progress' | 'completed',
-      user_id: userId,
-      createdAt: now,
-      updatedAt: now
-    };
-
-    tasks.push(newTask);
-
-    // REST API returns specific structure: {success, message, taskId, title, description, status}
-    // For gRPC, we return the full task object
-    const taskProto = new messages.Task();
-    taskProto.setId(newTask.id.toString());
-    taskProto.setTitle(newTask.title);
-    taskProto.setDescription(newTask.description || '');
-    taskProto.setStatus(newTask.status);
-    taskProto.setUserid(newTask.user_id.toString());
-    taskProto.setCreatedat(newTask.createdAt);
-    taskProto.setUpdatedat(newTask.updatedAt);
-
-    const statusProto = new messages.Status();
-    statusProto.setCode(grpc.status.OK);
-    statusProto.setMessage('Task created successfully');
-
-    const response = new messages.TaskResponse();
-    response.setTask(taskProto);
-    response.setStatus(statusProto);
-
-    callback(null, response);
   },
 
-  updateTask: (call: any, callback: any) => {
-    const taskId = parseInt(call.request.getTaskid());
-    const title = call.request.getTitle();
-    const description = call.request.getDescription();
-    const status = call.request.getStatus();
+  deleteTask: async (call: any, callback: any) => {
+    console.log('🟢 gRPC - deleteTask()');
+    
+    try {
+      const taskIdStr = call.request.getTaskid();
+      
+      console.log('  Request params: { taskId:', taskIdStr, '}');
+      
+      // Validate task ID
+      const taskId = parseInt(taskIdStr);
+      if (!taskIdStr || isNaN(taskId)) {
+        console.log('  ❌ Invalid task ID');
+        const error = new Error('Valid task ID is required');
+        (error as any).code = grpc.status.INVALID_ARGUMENT;
+        return callback(error);
+      }
+      
+      const connection = await pool.getConnection();
+      
+      // Check if task exists before deleting
+      const existingRows = await connection.query(
+        'SELECT * FROM tasks WHERE id = ?',
+        [taskId]
+      );
 
-    const taskIndex = tasks.findIndex(t => t.id === taskId);
-    if (taskIndex === -1) {
-      const error = new Error('Task not found or you do not have permission');
-      (error as any).code = grpc.status.NOT_FOUND;
-      return callback(error);
+      if (!existingRows || existingRows.length === 0) {
+        connection.release();
+        const error = new Error('Task not found or you do not have permission');
+        (error as any).code = grpc.status.NOT_FOUND;
+        return callback(error);
+      }
+
+      // Actually delete the task from the database
+      await connection.query('DELETE FROM tasks WHERE id = ?', [taskId]);
+      connection.release();
+
+      // REST API returns 204 No Content for DELETE, but gRPC needs a response
+      const statusProto = new messages.Status();
+      statusProto.setCode(grpc.status.OK);
+      statusProto.setMessage('Task deleted successfully');
+
+      const response = new messages.DeleteTaskResponse();
+      response.setStatus(statusProto);
+
+      callback(null, response);
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      const grpcError = new Error('Failed to delete task');
+      (grpcError as any).code = grpc.status.INTERNAL;
+      callback(grpcError);
     }
-
-    // Validate status if provided (match REST API validation)
-    if (status && !['pending', 'in_progress', 'completed'].includes(status)) {
-      const error = new Error('Status must be one of: pending, in_progress, completed');
-      (error as any).code = grpc.status.INVALID_ARGUMENT;
-      return callback(error);
-    }
-
-    // Update task fields (match REST API behavior)
-    if (title !== undefined) tasks[taskIndex].title = title;
-    if (description !== undefined) tasks[taskIndex].description = description;
-    if (status !== undefined) tasks[taskIndex].status = status as 'pending' | 'in_progress' | 'completed';
-    tasks[taskIndex].updatedAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
-
-    // REST API returns {success: true, message: 'Task updated successfully'}
-    // For gRPC, we return the full updated task
-    const taskProto = new messages.Task();
-    taskProto.setId(tasks[taskIndex].id.toString());
-    taskProto.setTitle(tasks[taskIndex].title);
-    taskProto.setDescription(tasks[taskIndex].description || '');
-    taskProto.setStatus(tasks[taskIndex].status);
-    taskProto.setUserid(tasks[taskIndex].user_id.toString());
-    taskProto.setCreatedat(tasks[taskIndex].createdAt);
-    taskProto.setUpdatedat(tasks[taskIndex].updatedAt);
-
-    const statusProto = new messages.Status();
-    statusProto.setCode(grpc.status.OK);
-    statusProto.setMessage('Task updated successfully');
-
-    const response = new messages.TaskResponse();
-    response.setTask(taskProto);
-    response.setStatus(statusProto);
-
-    callback(null, response);
-  },
-
-  deleteTask: (call: any, callback: any) => {
-    const taskId = parseInt(call.request.getTaskid());
-    const taskIndex = tasks.findIndex(t => t.id === taskId);
-
-    if (taskIndex === -1) {
-      const error = new Error('Task not found or you do not have permission');
-      (error as any).code = grpc.status.NOT_FOUND;
-      return callback(error);
-    }
-
-    tasks.splice(taskIndex, 1);
-
-    // REST API returns 204 No Content for DELETE, but gRPC needs a response
-    const statusProto = new messages.Status();
-    statusProto.setCode(grpc.status.OK);
-    statusProto.setMessage('Task deleted successfully');
-
-    const response = new messages.DeleteTaskResponse();
-    response.setStatus(statusProto);
-
-    callback(null, response);
   }
 };

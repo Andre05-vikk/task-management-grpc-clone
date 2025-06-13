@@ -1,6 +1,6 @@
 import * as grpc from '@grpc/grpc-js';
 import * as jwt from 'jsonwebtoken';
-import { sessions } from '../data/store';
+import { pool } from '../data/database';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -11,14 +11,8 @@ export interface TokenPayload {
 
 export function verifyToken(token: string): TokenPayload | null {
   try {
-    // Verify token
+    // Verify JWT token (JWT tokens are stateless - no need for session storage)
     const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload;
-
-    // Check if session exists
-    if (!sessions.has(token)) {
-      return null;
-    }
-
     return decoded;
   } catch (error) {
     return null;

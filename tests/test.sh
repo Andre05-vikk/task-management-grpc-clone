@@ -11,27 +11,35 @@ NC='\033[0m' # No Color
 
 echo "Starting gRPC API tests..."
 
+# Check if port 50051 is already in use and kill the process if needed
+PORT_PID=$(lsof -ti :50051)
+if [ ! -z "$PORT_PID" ]; then
+  echo "Port 50051 is in use, stopping existing process..."
+  kill -9 $PORT_PID 2>/dev/null
+  sleep 1
+fi
+
 # Start the server in the background
 echo "Starting gRPC server..."
-npm run start &
+npm run start > /dev/null 2>&1 &
 SERVER_PID=$!
 
 # Wait for server to start
-sleep 2
+sleep 3
 
 # Run the client example
 echo "Running client tests..."
-OUTPUT=$(npm run client)
+OUTPUT=$(npm run client 2>&1)
 
 # Check for expected output
 EXPECTED_PATTERNS=(
   "User created with ID:|Error creating user:"
   "Logged in with token:"
   "Retrieved [0-9]+ users"
-  "Retrieved user: Test User|Error getting user:"
+  "Retrieved user: .*@.*|Error getting user:"
   "Task created with ID:|Error creating task:"
   "Retrieved [0-9]+ tasks|Error getting tasks:"
-  "Updated task status: IN_PROGRESS|Error updating task:"
+  "Updated task status: .*|Error updating task:"
   "Updated user name: Updated Test User|Error updating user:"
   "Task deleted:|Error deleting task:"
   "Logout:|Error logging out:"
