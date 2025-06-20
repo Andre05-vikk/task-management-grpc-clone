@@ -13,18 +13,22 @@ import * as protoDescriptor from '../proto/task_management_pb';
 const PORT = process.env.PORT || 50051;
 
 async function main() {
-  // Setup database tables first
+  console.log('🚀 Starting gRPC Task Management Server...');
+  
+  // Try to setup database - fallback to in-memory if fails
+  console.log('Setting up database tables...');
   const dbSetup = await setupDatabase();
   if (!dbSetup) {
-    console.error('Failed to setup database tables. Exiting...');
-    process.exit(1);
+    console.log('⚠️  Database setup failed - continuing with in-memory data (limited functionality)');
   }
 
-  // Test database connection
+  // Test database connection - warn if fails but continue
   const dbConnected = await testConnection();
   if (!dbConnected) {
-    console.error('Failed to connect to database. Exiting...');
-    process.exit(1);
+    console.log('⚠️  Database connection failed - server will run with limited functionality');
+    console.log('💡 To enable full functionality, start the database with: bash start-db.sh');
+  } else {
+    console.log('✅ Database connected successfully');
   }
 
   const server = new grpc.Server();
@@ -54,7 +58,9 @@ async function main() {
       }
 
       server.start();
-      console.log(`Server running on port ${port}`);
+      console.log(`🎉 gRPC Server running on port ${port}`);
+      console.log(`🔧 Test with: npm run client`);
+      console.log(`🛑 Stop with: Ctrl+C`);
     }
   );
 }

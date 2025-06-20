@@ -4,7 +4,14 @@ export async function setupDatabase() {
     let conn;
     try {
         console.log('Setting up database tables...');
-        conn = await pool.getConnection();
+        
+        // Try to get connection with timeout
+        const connectionPromise = pool.getConnection();
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Connection timeout')), 5000)
+        );
+        
+        conn = await Promise.race([connectionPromise, timeoutPromise]);
 
         // Create users table
         await conn.query(`
@@ -37,6 +44,6 @@ export async function setupDatabase() {
         console.error('Error setting up database:', error);
         return false;
     } finally {
-        if (conn) conn.release();
+        if (conn && typeof conn.release === 'function') conn.release();
     }
 }

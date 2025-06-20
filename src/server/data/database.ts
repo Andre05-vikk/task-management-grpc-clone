@@ -24,7 +24,14 @@ export async function testConnection() {
     let conn;
     try {
         console.log('Testing database connection...');
-        conn = await pool.getConnection();
+        
+        // Try to get connection with timeout
+        const connectionPromise = pool.getConnection();
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Connection timeout')), 3000)
+        );
+        
+        conn = await Promise.race([connectionPromise, timeoutPromise]);
         
         // Test if tables exist
         await conn.query('SELECT 1 FROM users LIMIT 1');
@@ -33,9 +40,9 @@ export async function testConnection() {
         console.log('Database connection successful');
         return true;
     } catch (err) {
-        console.error('Database connection failed:', err);
+        console.error('Database connection failed:', err.message || err);
         return false;
     } finally {
-        if (conn) conn.release();
+        if (conn && typeof conn.release === 'function') conn.release();
     }
 }
