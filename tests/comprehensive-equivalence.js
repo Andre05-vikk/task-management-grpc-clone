@@ -281,10 +281,10 @@ async function testTaskOperations() {
     if (restTask.success && grpcTask && !grpcTask.error) {
         // REST API returns: {success, message, taskId, title, description, status}
         global.restTaskId = restTask.data.taskId;
-        global.grpcTaskId = grpcTask.getTask().getId();
+        global.grpcTaskId = grpcTask.getTaskid(); // Fixed: grpc returns taskid directly
 
         assert(restTask.data.title === TEST_TASK.title, 'REST task has correct title');
-        assert(grpcTask.getTask().getTitle() === TEST_TASK.title, 'gRPC task has correct title');
+        assert(grpcTask.getTitle() === TEST_TASK.title, 'gRPC task has correct title'); // Fixed: grpc returns title directly
     }
 }
 

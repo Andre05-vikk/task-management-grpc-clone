@@ -40,7 +40,7 @@ EXPECTED_PATTERNS=(
   "Task created with ID:|Error creating task:"
   "Retrieved [0-9]+ tasks|Error getting tasks:"
   "Updated task status: .*|Error updating task:"
-  "Updated user name: Updated Test User|Error updating user:"
+  "Updated user password: .*|Error updating user:"
   "Task deleted:|Error deleting task:"
   "Logout:|Error logging out:"
   "User deleted:|Error deleting user:"

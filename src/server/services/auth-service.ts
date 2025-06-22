@@ -120,13 +120,8 @@ export const authServiceHandlers = {
 
     console.log('  ✅ Logout successful');
 
-    // Create response using proto messages
-    const statusProto = new messages.Status();
-    statusProto.setCode(grpc.status.OK);
-    statusProto.setMessage('Logout successful');
-
+    // Create empty response to match REST API (204 No Content)
     const response = new messages.LogoutResponse();
-    response.setStatus(statusProto);
 
     callback(null, response);
   }

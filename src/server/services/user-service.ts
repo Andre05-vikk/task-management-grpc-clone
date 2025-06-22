@@ -65,6 +65,8 @@ export const userServiceHandlers = {
       userProto.setUsername(user.username);
       userProto.setEmail(user.username); // Email is same as username
       userProto.setName(user.username); // Default name is username/email
+      userProto.setCreatedat(user.createdAt.toISOString());
+      userProto.setUpdatedat(user.updatedAt.toISOString());
 
       const statusProto = new messages.Status();
       statusProto.setCode(grpc.status.OK);
@@ -104,6 +106,8 @@ export const userServiceHandlers = {
         userProto.setUsername(user.username);
         userProto.setEmail(user.username); // Email is same as username
         userProto.setName(user.username); // Default name is username/email
+        userProto.setCreatedat(user.createdAt.toISOString());
+        userProto.setUpdatedat(user.updatedAt.toISOString());
         return userProto;
       });
 
@@ -164,6 +168,8 @@ export const userServiceHandlers = {
       userProto.setUsername(user.username);
       userProto.setEmail(user.username); // Email is same as username
       userProto.setName(user.username); // Default name is username/email
+      userProto.setCreatedat(user.createdAt.toISOString());
+      userProto.setUpdatedat(user.updatedAt.toISOString());
 
       const statusProto = new messages.Status();
       statusProto.setCode(grpc.status.OK);
@@ -244,6 +250,8 @@ export const userServiceHandlers = {
       userProto.setUsername(user.username);
       userProto.setEmail(user.username); // Email is same as username
       userProto.setName(user.username); // Default name is username/email
+      userProto.setCreatedat(user.createdAt.toISOString());
+      userProto.setUpdatedat(user.updatedAt.toISOString());
 
       const statusProto = new messages.Status();
       statusProto.setCode(grpc.status.OK);

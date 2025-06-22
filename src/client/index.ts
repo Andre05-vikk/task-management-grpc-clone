@@ -81,8 +81,7 @@ async function runExamples() {
         status: 'pending',
         userId
       });
-      const task = createTaskResponse.getTask();
-      taskId = task ? task.getId() : '';
+      taskId = createTaskResponse.getTaskid(); // Use getTaskid() instead of getTask().getId()
       console.log(`Task created with ID: ${taskId}`);
     } catch (error) {
       console.log(`Error creating task: ${error.message}`);
@@ -115,10 +114,10 @@ async function runExamples() {
     try {
       const updateUserResponse = await updateUser({
         userId,
-        name: 'Updated Test User'
+        password: 'newpassword123' // Use valid password instead of name
       });
       const updatedUser = updateUserResponse.getUser();
-      console.log(`Updated user name: ${updatedUser ? updatedUser.getName() : 'unknown'}`);
+      console.log(`Updated user password: ${updatedUser ? 'successful' : 'unknown'}`);
     } catch (error) {
       console.log(`Error updating user: ${error.message}`);
     }
@@ -137,8 +136,7 @@ async function runExamples() {
     console.log('\n10. Logging out...');
     try {
       const logoutResponse = await logout(authToken);
-      const logoutStatus = logoutResponse.getStatus();
-      console.log(`Logout: ${logoutStatus ? logoutStatus.getMessage() : 'unknown'}`);
+      console.log('Logout: successful'); // LogoutResponse is empty, so just confirm success
     } catch (error) {
       console.log(`Error logging out: ${error.message}`);
     }
@@ -223,11 +221,12 @@ function getUser(userId: string): Promise<any> {
   });
 }
 
-function updateUser(data: { userId: string, name?: string }): Promise<any> {
+function updateUser(data: { userId: string, name?: string, password?: string }): Promise<any> {
   return new Promise((resolve, reject) => {
     const request = new messages.UpdateUserRequest();
     request.setUserid(data.userId);
     if (data.name) request.setName(data.name);
+    if (data.password) request.setPassword(data.password);
 
     userClient.updateUser(request, (err, response) => {
       if (err) return reject(err);

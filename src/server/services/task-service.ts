@@ -57,8 +57,9 @@ export const taskServiceHandlers = {
         taskProto.setDescription(task.description || '');
         taskProto.setStatus(task.status);
         taskProto.setUserid(task.user_id.toString());
-        taskProto.setCreatedat(task.created_at);
-        taskProto.setUpdatedat(task.updated_at);
+        // Fix timestamp fields - convert database timestamps to ISO string
+        taskProto.setCreatedat(task.created_at ? task.created_at.toISOString() : '');
+        taskProto.setUpdatedat(task.updated_at ? task.updated_at.toISOString() : '');
         return taskProto;
       });
 
@@ -68,6 +69,9 @@ export const taskServiceHandlers = {
 
       const response = new messages.GetTasksResponse();
       response.setTasksList(tasksProto);
+      response.setPage(1);      // Match REST API response structure
+      response.setLimit(10);    // Match REST API response structure
+      response.setTotal(tasks.length);  // Match REST API response structure
       response.setStatus(statusProto);
 
       callback(null, response);
@@ -120,34 +124,21 @@ export const taskServiceHandlers = {
       );
       
       console.log('Insert ID:', result.insertId);
-      
-      // Fetch the created task
-      const rows = await connection.query(
-        'SELECT * FROM tasks WHERE id = ?',
-        [result.insertId]
-      );
       connection.release();
 
-      const newTask = rows[0];
-
-      // REST API returns specific structure: {success, message, taskId, title, description, status}
-      // For gRPC, we return the full task object
-      const taskProto = new messages.Task();
-      taskProto.setId(newTask.id.toString());
-      taskProto.setTitle(newTask.title);
-      taskProto.setDescription(newTask.description || '');
-      taskProto.setStatus(newTask.status);
-      taskProto.setUserid(newTask.user_id.toString());
-      taskProto.setCreatedat(newTask.created_at);
-      taskProto.setUpdatedat(newTask.updated_at);
-
+      // Match REST API response structure: {success, message, taskId, title, description, status}
       const statusProto = new messages.Status();
       statusProto.setCode(grpc.status.OK);
       statusProto.setMessage('Task created successfully');
 
-      const response = new messages.TaskResponse();
-      response.setTask(taskProto);
-      response.setStatus(statusProto);
+      const response = new messages.CreateTaskResponse();
+      response.setSuccess(true);
+      response.setMessage('Task created successfully');
+      response.setTaskid(result.insertId.toString());
+      response.setTitle(title);
+      response.setDescription(taskDescription || '');
+      response.setStatus(taskStatus);
+      response.setStatusInfo(statusProto);
 
       callback(null, response);
     } catch (error) {
