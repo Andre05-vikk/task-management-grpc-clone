@@ -43,9 +43,15 @@ function log(message, type = 'info') {
         info: '\x1b[36m',    // Cyan
         success: '\x1b[32m', // Green
         error: '\x1b[31m',   // Red
-        warning: '\x1b[33m'  // Yellow
+        warning: '\x1b[33m', // Yellow
+        payload: '\x1b[35m'  // Magenta
     };
     console.log(`${colors[type]}${message}\x1b[0m`);
+}
+
+function showPayload(title, payload, type = 'payload') {
+    log(`📋 ${title}:`, type);
+    log(JSON.stringify(payload, null, 2), type);
 }
 
 function assert(condition, message) {
@@ -63,10 +69,24 @@ function assert(condition, message) {
 
 // gRPC helper functions
 function grpcCall(client, method, request) {
+    // Show request payload
+    const requestObj = request.toObject ? request.toObject() : request;
+    showPayload(`gRPC ${method} Request`, requestObj);
+    
     return new Promise((resolve, reject) => {
         client[method](request, (err, response) => {
-            if (err) reject(err);
-            else resolve(response);
+            if (err) {
+                showPayload(`gRPC ${method} Error`, {
+                    code: err.code,
+                    message: err.message,
+                    details: err.details
+                });
+                reject(err);
+            } else {
+                const responseObj = response.toObject ? response.toObject() : response;
+                showPayload(`gRPC ${method} Response`, responseObj);
+                resolve(response);
+            }
         });
     });
 }
@@ -88,27 +108,58 @@ async function restCall(method, endpoint, data = null, token = null) {
         config.headers['Content-Type'] = 'application/json';
     }
     
+    // Show request payload
+    showPayload(`REST ${method} ${endpoint} Request`, {
+        url: config.url,
+        method: config.method,
+        headers: config.headers,
+        data: config.data || 'No body'
+    });
+    
     try {
         const response = await axios(config);
-        return { 
+        const result = { 
             success: true, 
             data: response.data, 
             status: response.status 
         };
+        
+        // Show response payload
+        showPayload(`REST ${method} ${endpoint} Response`, {
+            status: response.status,
+            data: response.data
+        });
+        
+        return result;
     } catch (error) {
         // Handle 204 No Content as success (for DELETE operations)
         if (error.response && error.response.status === 204) {
-            return { 
+            const result = { 
                 success: true, 
                 data: null, 
                 status: 204 
             };
+            
+            showPayload(`REST ${method} ${endpoint} Response`, {
+                status: 204,
+                data: 'No Content'
+            });
+            
+            return result;
         }
-        return { 
+        
+        const result = { 
             success: false, 
             error: error.response?.data || error.message,
             status: error.response?.status || 500
         };
+        
+        showPayload(`REST ${method} ${endpoint} Error`, {
+            status: error.response?.status || 500,
+            error: error.response?.data || error.message
+        });
+        
+        return result;
     }
 }
 
@@ -140,19 +191,17 @@ async function testUserCreation() {
     
     if (restResult.success && grpcResult && !grpcResult.error) {
         const restUserData = restResult.data;
-            const grpcUser = grpcResult.getUser();
+            const grpcUser = grpcResult.getUser();        // REST API returns: {id, username, createdAt, updatedAt}
+        assert(typeof restUserData.id !== 'undefined', 'REST returns user ID');
+        assert(grpcUser && grpcUser.getId(), 'gRPC returns user ID');
+        assert(restUserData.username === TEST_USER.email, 'REST user has correct username (email)');
+        assert(grpcUser && grpcUser.getUsername() === TEST_USER.email + '_grpc', 'gRPC user has correct username');
 
-            // REST API returns: {id, username, createdAt, updatedAt}
-            assert(typeof restUserData.id !== 'undefined', 'REST returns user ID');
-            assert(grpcUser && grpcUser.getId(), 'gRPC returns user ID');
-            assert(restUserData.username === TEST_USER.email, 'REST user has correct username (email)');
-            assert(grpcUser && grpcUser.getEmail() === TEST_USER.email + '_grpc', 'gRPC user has correct email');
-
-            // Store for later tests
-            global.restUserId = restUserData.id;
-            global.grpcUserId = grpcUser ? grpcUser.getId() : null;
-            global.restUserEmail = restUserData.username; // username field contains email
-            global.grpcUserEmail = grpcUser ? grpcUser.getEmail() : null;
+        // Store for later tests
+        global.restUserId = restUserData.id;
+        global.grpcUserId = grpcUser ? grpcUser.getId() : null;
+        global.restUserEmail = restUserData.username; // username field contains email
+        global.grpcUserEmail = grpcUser ? grpcUser.getUsername() : null; // username field contains email
         }
 }
 
@@ -167,7 +216,7 @@ async function testAuthentication() {
     
     // gRPC API login
     const grpcLoginRequest = new messages.LoginRequest();
-    grpcLoginRequest.setUsername(global.grpcUserEmail);
+    grpcLoginRequest.setEmail(global.grpcUserEmail);  // Use setEmail instead of setUsername
     grpcLoginRequest.setPassword(TEST_USER.password);
     
     let grpcLogin;
@@ -259,7 +308,7 @@ async function testTaskOperations() {
     grpcTaskRequest.setTitle(TEST_TASK.title);
     grpcTaskRequest.setDescription(TEST_TASK.description);
     grpcTaskRequest.setStatus(TEST_TASK.status);
-    grpcTaskRequest.setUserid(global.grpcUserId);
+    grpcTaskRequest.setUserId(global.grpcUserId);
     
     let grpcTask;
     try {
@@ -298,7 +347,7 @@ async function testErrorHandling() {
     });
     
     const grpcInvalidRequest = new messages.LoginRequest();
-    grpcInvalidRequest.setUsername('nonexistent@example.com');
+    grpcInvalidRequest.setEmail('nonexistent@example.com');  // Use setEmail instead of setUsername
     grpcInvalidRequest.setPassword('wrongpassword');
     
     let grpcInvalidLogin;
@@ -354,7 +403,7 @@ async function testListTasks() {
     
     // gRPC API - need to set user ID for filtering
     const grpcRequest = new messages.GetTasksRequest();
-    grpcRequest.setUserid(global.grpcUserId);
+    grpcRequest.setUserId(global.grpcUserId);
     
     let grpcTasks;
     try {

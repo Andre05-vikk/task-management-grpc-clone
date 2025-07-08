@@ -3,7 +3,7 @@ import * as messages from '../../proto/task_management_pb';
 import * as services from '../../proto/task_management_grpc_pb';
 import { pool } from '../data/database';
 import { verifyToken } from '../utils/auth';
-import bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 export const userServiceHandlers = {
   createUser: async (call: any, callback: any) => {
@@ -61,12 +61,10 @@ export const userServiceHandlers = {
 
       // Return user without password (match REST API response exactly)
       const userProto = new messages.User();
-      userProto.setId(user.id.toString());
+      userProto.setId(user.id);             // Now int32 instead of string
       userProto.setUsername(user.username);
-      userProto.setEmail(user.username); // Email is same as username
-      userProto.setName(user.username); // Default name is username/email
-      userProto.setCreatedat(user.createdAt.toISOString());
-      userProto.setUpdatedat(user.updatedAt.toISOString());
+      userProto.setCreatedAt(user.createdAt.toISOString());
+      userProto.setUpdatedAt(user.updatedAt.toISOString());
 
       const statusProto = new messages.Status();
       statusProto.setCode(grpc.status.OK);
@@ -102,12 +100,10 @@ export const userServiceHandlers = {
 
       const usersProto = users.map((user: any) => {
         const userProto = new messages.User();
-        userProto.setId(user.id.toString());
+        userProto.setId(user.id);               // Now int32 instead of string
         userProto.setUsername(user.username);
-        userProto.setEmail(user.username); // Email is same as username
-        userProto.setName(user.username); // Default name is username/email
-        userProto.setCreatedat(user.createdAt.toISOString());
-        userProto.setUpdatedat(user.updatedAt.toISOString());
+        userProto.setCreatedAt(user.createdAt.toISOString());
+        userProto.setUpdatedAt(user.updatedAt.toISOString());
         return userProto;
       });
 
@@ -132,13 +128,12 @@ export const userServiceHandlers = {
   getUser: async (call: any, callback: any) => {
     console.log('🟢 gRPC - getUser()');
     
-    const userIdStr = call.request.getUserid();
-    const userId = parseInt(userIdStr);
+    const userId = call.request.getUserid();    // Now getUserid() returns int32 directly
     
-    console.log('  Request params: { userId:', userIdStr, '}');
+    console.log('  Request params: { userId:', userId, '}');
     
     // Validate userId
-    if (!userIdStr || isNaN(userId)) {
+    if (!userId || userId <= 0) {
       console.log('  ❌ Invalid user ID');
       const err = new Error('Invalid user ID');
       (err as any).code = grpc.status.INVALID_ARGUMENT;
@@ -164,12 +159,10 @@ export const userServiceHandlers = {
 
       // Return user without password (match REST API)
       const userProto = new messages.User();
-      userProto.setId(user.id.toString());
+      userProto.setId(user.id);               // Now int32 instead of string
       userProto.setUsername(user.username);
-      userProto.setEmail(user.username); // Email is same as username
-      userProto.setName(user.username); // Default name is username/email
-      userProto.setCreatedat(user.createdAt.toISOString());
-      userProto.setUpdatedat(user.updatedAt.toISOString());
+      userProto.setCreatedAt(user.createdAt.toISOString());
+      userProto.setUpdatedAt(user.updatedAt.toISOString());
 
       const statusProto = new messages.Status();
       statusProto.setCode(grpc.status.OK);
@@ -192,15 +185,14 @@ export const userServiceHandlers = {
   updateUser: async (call: any, callback: any) => {
     console.log('🟢 gRPC - updateUser()');
     
-    const userIdStr = call.request.getUserid();
-    const userId = parseInt(userIdStr);
+    const userId = call.request.getUserid();    // Now getUserid() returns int32 directly
     const password = call.request.getPassword();
 
-    console.log('  Request params: { userId:', userIdStr, '}');
+    console.log('  Request params: { userId:', userId, '}');
     console.log('  Request body: { password: \'password123\' }');
 
     // Validate userId
-    if (!userIdStr || isNaN(userId)) {
+    if (!userId || userId <= 0) {
       console.log('  ❌ Invalid user ID');
       const err = new Error('Invalid user ID');
       (err as any).code = grpc.status.INVALID_ARGUMENT;
@@ -244,14 +236,13 @@ export const userServiceHandlers = {
       
       conn.release();
 
-      // Return user without password (match REST API response)
+      // Return user without password (match REST API response exactly)
       const userProto = new messages.User();
-      userProto.setId(user.id.toString());
+      userProto.setId(user.id);                // Fix: should be int32, not string
       userProto.setUsername(user.username);
-      userProto.setEmail(user.username); // Email is same as username
-      userProto.setName(user.username); // Default name is username/email
-      userProto.setCreatedat(user.createdAt.toISOString());
-      userProto.setUpdatedat(user.updatedAt.toISOString());
+      // Note: REST API doesn't return email/name fields in update response
+      userProto.setCreatedAt(user.createdAt.toISOString());
+      userProto.setUpdatedAt(user.updatedAt.toISOString());
 
       const statusProto = new messages.Status();
       statusProto.setCode(grpc.status.OK);
@@ -274,13 +265,12 @@ export const userServiceHandlers = {
   deleteUser: async (call: any, callback: any) => {
     console.log('🟢 gRPC - deleteUser()');
     
-    const userIdStr = call.request.getUserid();
-    const userId = parseInt(userIdStr);
+    const userId = call.request.getUserid();    // Now getUserid() returns int32 directly
     
-    console.log('  Request params: { userId:', userIdStr, '}');
+    console.log('  Request params: { userId:', userId, '}');
     
     // Validate userId
-    if (!userIdStr || isNaN(userId)) {
+    if (!userId || userId <= 0) {
       console.log('  ❌ Invalid user ID');
       const err = new Error('Invalid user ID');
       (err as any).code = grpc.status.INVALID_ARGUMENT;

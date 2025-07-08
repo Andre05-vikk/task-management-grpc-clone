@@ -18,7 +18,7 @@ service AuthService {
 }
 
 message LoginRequest {
-  string username = 1;
+  string email = 1;
   string password = 2;
 }
 
@@ -54,20 +54,16 @@ service UserService {
 }
 
 message User {
-  string id = 1;
+  int32 id = 1;
   string username = 2;
-  string email = 3;
-  string name = 4;
-  string createdAt = 5;
-  string updatedAt = 6;
+  string created_at = 3;
+  string updated_at = 4;
   // Password is not included in responses
 }
 
 message CreateUserRequest {
-  string username = 1;
-  string email = 2;
-  string password = 3;
-  string name = 4;
+  string email = 1;
+  string password = 2;
 }
 
 message GetUsersRequest {
@@ -82,11 +78,11 @@ message GetUsersResponse {
 }
 
 message GetUserRequest {
-  string userId = 1;
+  int32 userId = 1;           // REST uses id as number
 }
 
 message DeleteUserRequest {
-  string userId = 1;
+  int32 userId = 1;           // REST uses id as number
 }
 
 message DeleteUserResponse {
@@ -94,11 +90,8 @@ message DeleteUserResponse {
 }
 
 message UpdateUserRequest {
-  string userId = 1;
-  optional string username = 2;
-  optional string email = 3;
-  optional string name = 4;
-  optional string password = 5;
+  int32 userId = 1;           // REST uses id as number
+  optional string password = 2; // REST primarily supports password updates
 }
 
 message UserResponse {
@@ -122,18 +115,18 @@ service TaskService {
 }
 
 message Task {
-  string id = 1;
+  int32 id = 1;               // REST uses id (number), not string
   string title = 2;
   string description = 3;
   string status = 4;
-  string userId = 5 [json_name = "user_id"];  // Maps to user_id in JSON output
-  string createdAt = 6;
-  string updatedAt = 7;
+  int32 user_id = 5;          // REST uses user_id (snake_case), number
+  string created_at = 6;
+  string updated_at = 7;
 }
 
 message GetTasksRequest {
   // Optional filters
-  optional string userId = 1 [json_name = "user_id"];  // Maps to user_id in JSON
+  optional int32 user_id = 1;  // REST uses user_id (snake_case), number
   optional string status = 2;
   // Pagination
   int32 page = 3;
@@ -152,21 +145,21 @@ message CreateTaskRequest {
   string title = 1;
   string description = 2;
   string status = 3;
-  string userId = 4 [json_name = "user_id"];  // Maps to user_id in JSON
+  int32 user_id = 4;          // REST uses user_id (snake_case), number
 }
 
 message CreateTaskResponse {
   bool success = 1;
   string message = 2;
-  string taskId = 3;  // Match REST API field name
+  int32 taskId = 3;           // REST API returns taskId as number
   string title = 4;
   string description = 5;
   string status = 6;
-  Status status_info = 7;  // For gRPC status info
+  Status status_info = 7;     // For gRPC status info
 }
 
 message DeleteTaskRequest {
-  string taskId = 1;
+  int32 taskId = 1;           // REST uses id as number
 }
 
 message DeleteTaskResponse {
@@ -174,11 +167,11 @@ message DeleteTaskResponse {
 }
 
 message UpdateTaskRequest {
-  string taskId = 1;
+  int32 taskId = 1;           // REST uses id as number
   optional string title = 2;
   optional string description = 3;
   optional string status = 4;
-  optional string userId = 5 [json_name = "user_id"];  // Maps to user_id in JSON
+  optional int32 user_id = 5; // REST uses user_id (snake_case), number
 }
 
 message TaskResponse {

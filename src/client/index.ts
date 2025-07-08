@@ -161,10 +161,8 @@ async function runExamples() {
 function createUser(user: typeof testUser): Promise<any> {
   return new Promise((resolve, reject) => {
     const request = new messages.CreateUserRequest();
-    request.setUsername(user.username);
-    request.setEmail(user.email);
+    request.setEmail(user.email);      // Only email and password now
     request.setPassword(user.password);
-    request.setName(user.name);
 
     userClient.createUser(request, (err, response) => {
       if (err) return reject(err);
@@ -176,7 +174,7 @@ function createUser(user: typeof testUser): Promise<any> {
 function login(username: string, password: string): Promise<any> {
   return new Promise((resolve, reject) => {
     const request = new messages.LoginRequest();
-    request.setUsername(username);
+    request.setEmail(username);        // Now setEmail instead of setUsername
     request.setPassword(password);
 
     authClient.login(request, (err, response) => {
@@ -212,7 +210,7 @@ function getUsers(): Promise<any> {
 function getUser(userId: string): Promise<any> {
   return new Promise((resolve, reject) => {
     const request = new messages.GetUserRequest();
-    request.setUserid(userId);
+    request.setUserid(parseInt(userId));    // Convert string to number
 
     userClient.getUser(request, (err, response) => {
       if (err) return reject(err);
@@ -221,11 +219,10 @@ function getUser(userId: string): Promise<any> {
   });
 }
 
-function updateUser(data: { userId: string, name?: string, password?: string }): Promise<any> {
+function updateUser(data: { userId: string, password?: string }): Promise<any> {
   return new Promise((resolve, reject) => {
     const request = new messages.UpdateUserRequest();
-    request.setUserid(data.userId);
-    if (data.name) request.setName(data.name);
+    request.setUserid(parseInt(data.userId));    // Convert string to number
     if (data.password) request.setPassword(data.password);
 
     userClient.updateUser(request, (err, response) => {
@@ -238,7 +235,7 @@ function updateUser(data: { userId: string, name?: string, password?: string }):
 function deleteUser(userId: string): Promise<any> {
   return new Promise((resolve, reject) => {
     const request = new messages.DeleteUserRequest();
-    request.setUserid(userId);
+    request.setUserid(parseInt(userId));          // Convert string to number
 
     userClient.deleteUser(request, (err, response) => {
       if (err) return reject(err);
@@ -253,7 +250,7 @@ function createTask(task: { title: string, description: string, status: string, 
     request.setTitle(task.title);
     request.setDescription(task.description);
     request.setStatus(task.status);
-    request.setUserid(task.userId);
+    request.setUserId(parseInt(task.userId));    // Convert string to number, use setUserId
 
     taskClient.createTask(request, (err, response) => {
       if (err) return reject(err);
@@ -276,7 +273,7 @@ function getTasks(): Promise<any> {
 function updateTask(data: { taskId: string, status?: string }): Promise<any> {
   return new Promise((resolve, reject) => {
     const request = new messages.UpdateTaskRequest();
-    request.setTaskid(data.taskId);
+    request.setTaskid(parseInt(data.taskId));    // Convert string to number
     if (data.status) request.setStatus(data.status);
 
     taskClient.updateTask(request, (err, response) => {
@@ -289,7 +286,7 @@ function updateTask(data: { taskId: string, status?: string }): Promise<any> {
 function deleteTask(taskId: string): Promise<any> {
   return new Promise((resolve, reject) => {
     const request = new messages.DeleteTaskRequest();
-    request.setTaskid(taskId);
+    request.setTaskid(parseInt(taskId));         // Convert string to number
 
     taskClient.deleteTask(request, (err, response) => {
       if (err) return reject(err);

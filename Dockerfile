@@ -6,13 +6,13 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci --only=production
 
 # Copy source code
 COPY . .
 
-# Build the application (proto files are pre-generated)
-RUN npm run build
+# Build TypeScript
+RUN npm install -g typescript && npx tsc
 
 # Expose the gRPC port
 EXPOSE 50051

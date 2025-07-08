@@ -1,6 +1,6 @@
 import * as grpc from '@grpc/grpc-js';
 import * as jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import * as messages from '../../proto/task_management_pb';
 import * as services from '../../proto/task_management_grpc_pb';
 import { pool } from '../data/database';
@@ -16,7 +16,7 @@ export const authServiceHandlers = {
     console.log('🟢 gRPC - login()');
     
     try {
-      const email = call.request.getUsername(); // Rename to match REST API
+      const email = call.request.getEmail();      // Now getEmail() to match proto
       const password = call.request.getPassword();
 
       console.log('  Request body:', { email, password: 'password123' });

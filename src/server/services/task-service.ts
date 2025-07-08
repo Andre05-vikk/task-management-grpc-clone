@@ -9,7 +9,7 @@ export const taskServiceHandlers = {
     console.log('🟢 gRPC - getTasks()');
     
     try {
-      const userId = call.request.getUserid();
+      const userId = call.request.getUserId();     // Now getUserId() for camelCase
       const status = call.request.getStatus();
 
       console.log('  User ID:', userId || 'undefined');
@@ -23,16 +23,15 @@ export const taskServiceHandlers = {
 
       // Apply user filter (required like in REST API)
       if (userId) {
-        const parsedUserId = parseInt(userId);
-        if (isNaN(parsedUserId)) {
+        if (userId <= 0) {
           console.log('  ❌ Invalid user ID format');
           const error = new Error('Invalid user ID format');
           (error as any).code = grpc.status.INVALID_ARGUMENT;
           return callback(error);
         }
-        console.log('  🔍 Filtering by user ID:', parsedUserId);
+        console.log('  🔍 Filtering by user ID:', userId);
         query += ' AND user_id = ?';
-        params.push(parsedUserId);
+        params.push(userId);
       }
 
       // Apply status filter if provided
@@ -52,14 +51,14 @@ export const taskServiceHandlers = {
       // Create response using proto messages (match REST API structure)
       const tasksProto = tasks.map(task => {
         const taskProto = new messages.Task();
-        taskProto.setId(task.id.toString());
+        taskProto.setId(task.id);                    // Now int32 instead of string
         taskProto.setTitle(task.title);
         taskProto.setDescription(task.description || '');
         taskProto.setStatus(task.status);
-        taskProto.setUserid(task.user_id.toString());
-        // Fix timestamp fields - convert database timestamps to ISO string
-        taskProto.setCreatedat(task.created_at ? task.created_at.toISOString() : '');
-        taskProto.setUpdatedat(task.updated_at ? task.updated_at.toISOString() : '');
+        taskProto.setUserId(task.user_id);          // Now setUserId() for camelCase
+        // Use helper functions for consistent timestamp formatting
+        setCreatedAt(taskProto, task.created_at);
+        setUpdatedAt(taskProto, task.updated_at);
         return taskProto;
       });
 
@@ -90,11 +89,10 @@ export const taskServiceHandlers = {
       const title = call.request.getTitle();
       const description = call.request.getDescription();
       const status = call.request.getStatus();
-      const userIdStr = call.request.getUserid();
+      const userId = call.request.getUserId();    // Now getUserId() returns int32 directly
       
       // Validate user ID
-      const userId = parseInt(userIdStr);
-      if (!userIdStr || isNaN(userId)) {
+      if (!userId || userId <= 0) {
         const error = new Error('Valid user ID is required');
         (error as any).code = grpc.status.INVALID_ARGUMENT;
         return callback(error);
@@ -134,7 +132,7 @@ export const taskServiceHandlers = {
       const response = new messages.CreateTaskResponse();
       response.setSuccess(true);
       response.setMessage('Task created successfully');
-      response.setTaskid(result.insertId.toString());
+      response.setTaskid(Number(result.insertId));  // Now int32 instead of string
       response.setTitle(title);
       response.setDescription(taskDescription || '');
       response.setStatus(taskStatus);
@@ -153,17 +151,16 @@ export const taskServiceHandlers = {
     console.log('🟢 gRPC - updateTask()');
     
     try {
-      const taskIdStr = call.request.getTaskid();
+      const taskId = call.request.getTaskid();    // Now getTaskid() returns int32 directly
       const title = call.request.getTitle();
       const description = call.request.getDescription();
       const status = call.request.getStatus();
 
-      console.log('  Request params: { taskId:', taskIdStr, '}');
+      console.log('  Request params: { taskId:', taskId, '}');
       console.log('  Request body: { title: \'Updated Test Task\' }');
 
       // Validate task ID
-      const taskId = parseInt(taskIdStr);
-      if (!taskIdStr || isNaN(taskId)) {
+      if (!taskId || taskId <= 0) {
         console.log('  ❌ Invalid task ID');
         const error = new Error('Valid task ID is required');
         (error as any).code = grpc.status.INVALID_ARGUMENT;
@@ -235,13 +232,13 @@ export const taskServiceHandlers = {
       // REST API returns {success: true, message: 'Task updated successfully'}
       // For gRPC, we return the full updated task
       const taskProto = new messages.Task();
-      taskProto.setId(updatedTask.id.toString());
+      taskProto.setId(updatedTask.id);               // Now int32 instead of string
       taskProto.setTitle(updatedTask.title);
       taskProto.setDescription(updatedTask.description || '');
-      taskProto.setStatus(updatedTask.status);
-      taskProto.setUserid(updatedTask.user_id.toString());
-      taskProto.setCreatedat(updatedTask.created_at);
-      taskProto.setUpdatedat(updatedTask.updated_at);
+      taskProto.setStatus(updatedTask.status);        taskProto.setUserId(updatedTask.user_id);      // Now setUserId() for camelCase
+      // Use helper functions for consistent timestamp formatting
+      setCreatedAt(taskProto, updatedTask.created_at);
+      setUpdatedAt(taskProto, updatedTask.updated_at);
 
       const statusProto = new messages.Status();
       statusProto.setCode(grpc.status.OK);
@@ -264,13 +261,12 @@ export const taskServiceHandlers = {
     console.log('🟢 gRPC - deleteTask()');
     
     try {
-      const taskIdStr = call.request.getTaskid();
+      const taskId = call.request.getTaskid();    // Now getTaskid() returns int32 directly
       
-      console.log('  Request params: { taskId:', taskIdStr, '}');
+      console.log('  Request params: { taskId:', taskId, '}');
       
       // Validate task ID
-      const taskId = parseInt(taskIdStr);
-      if (!taskIdStr || isNaN(taskId)) {
+      if (!taskId || taskId <= 0) {
         console.log('  ❌ Invalid task ID');
         const error = new Error('Valid task ID is required');
         (error as any).code = grpc.status.INVALID_ARGUMENT;
@@ -313,3 +309,40 @@ export const taskServiceHandlers = {
     }
   }
 };
+/**
+ * Sets the createdAt field on a Task proto message.
+ * Accepts a Date object or ISO string, and stores as ISO string.
+ */
+function setCreatedAt(taskProto: messages.Task, createdAt: Date | string | null | undefined) {
+  if (!createdAt) {
+    taskProto.setCreatedAt('');
+    return;
+  }
+  if (createdAt instanceof Date) {
+    taskProto.setCreatedAt(createdAt.toISOString());
+  } else if (typeof createdAt === 'string') {
+    // If already ISO string, just set it
+    taskProto.setCreatedAt(createdAt);
+  } else {
+    taskProto.setCreatedAt('');
+  }
+}
+
+/**
+ * Sets the updatedAt field on a Task proto message.
+ * Accepts a Date object or ISO string, and stores as ISO string.
+ */
+function setUpdatedAt(taskProto: messages.Task, updatedAt: Date | string | null | undefined) {
+  if (!updatedAt) {
+    taskProto.setUpdatedAt('');
+    return;
+  }
+  if (updatedAt instanceof Date) {
+    taskProto.setUpdatedAt(updatedAt.toISOString());
+  } else if (typeof updatedAt === 'string') {
+    // If already ISO string, just set it
+    taskProto.setUpdatedAt(updatedAt);
+  } else {
+    taskProto.setUpdatedAt('');
+  }
+}

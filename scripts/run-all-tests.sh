@@ -16,7 +16,7 @@ echo -e "${YELLOW}0. Install dependencies${NC}"
 echo -e "${YELLOW}1. Build the gRPC project${NC}"
 echo -e "${YELLOW}2. Start both REST and gRPC APIs${NC}"
 echo -e "${YELLOW}3. Run basic gRPC tests${NC}"
-echo -e "${YELLOW}4. Run functional equivalence tests${NC}"
+echo -e "${YELLOW}4. Run REST vs gRPC equivalence tests${NC}"
 echo -e "${YELLOW}5. Clean up all processes${NC}"
 
 # Install dependencies
@@ -262,7 +262,6 @@ main() {
     # Step 5: Run equivalence tests
     if run_equivalence_tests; then
         ((tests_passed++))
-        echo -e "${GREEN}✓ All tests completed successfully${NC}"
     fi
     
     # Final results
